@@ -1,21 +1,25 @@
 #![warn(missing_docs)]
 
-mod http;
-mod types;
+pub mod http;
 
-struct ClientConnectionConfig {
-    pub http_url: String
+pub struct ClientConnectionConfig {
+    pub http_url: String,
+    pub http_auth: Option<String>
 }
 
-struct Client {
+pub struct Client {
     http: http::HttpClient
 }
 impl Client {
     pub fn new(config: ClientConnectionConfig) -> Self {
-
-        // TODO: Remove unwrap for client failure.
+        // TODO: Don't expect here, make this return a Result with an AppError?
+        let http = http::HttpClient::new(config.http_url, config.http_auth).expect("HttpClient failed");
         Self {
-            http: http::HttpClient::new(config.http_url.as_str()).unwrap()
+            http
         }
+    }
+
+    pub fn borrow_http(&self) -> &http::HttpClient {
+        &self.http
     }
 }

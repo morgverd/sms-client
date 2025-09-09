@@ -20,6 +20,42 @@ impl HttpPaginationOptions {
     }
 }
 
+#[derive(Serialize, Debug, Default)]
+pub struct HttpOutgoingSmsMessage {
+    pub to: String,
+    pub content: String,
+    pub validity_period: Option<u8>,
+    pub flash: bool
+}
+impl HttpOutgoingSmsMessage {
+
+    /// Create a new outgoing message with a default validity period and no flash.
+    /// The default validity period is applied by SMS-API, so usually 24 hours.
+    pub fn simple_message(
+        to: impl Into<String>,
+        content: impl Into<String>
+    ) -> Self {
+        Self {
+            to: to.into(),
+            content: content.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Set the message flash state. This will show a popup if the recipient is
+    /// logged-in to their phone, otherwise as a normal text message.
+    pub fn with_flash(mut self, flash: bool) -> Self {
+        self.flash = flash;
+        self
+    }
+
+    /// Set a relative validity period value.
+    pub fn with_validity_period(mut self, period: u8) -> Self {
+        self.validity_period = Some(period);
+        self
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct HttpSmsStoredMessage {
     pub message_id: i64,

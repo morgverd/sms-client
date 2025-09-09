@@ -1,7 +1,5 @@
-use std::time::Duration;
 use crate::http::types::*;
 use crate::http::error::*;
-use crate::types::OutgoingMessage;
 
 pub mod types;
 pub mod error;
@@ -74,18 +72,23 @@ where
 
 pub struct HttpClient {
     base_url: reqwest::Url,
+    authorization: Option<String>,
     client: reqwest::Client
 }
 impl HttpClient {
 
     /// Create a new HTTP client that uses the base_url.
-    pub fn new(base_url: &str) -> HttpResult<Self> {
+    pub fn new(
+        base_url: impl Into<String>,
+        authorization: Option<impl Into<String>>
+    ) -> HttpResult<Self> {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(10))
+            .timeout(std::time::Duration::from_secs(10))
             .build()?;
 
         Ok(Self {
-            base_url: reqwest::Url::parse(base_url)?,
+            base_url: reqwest::Url::parse(&base_url.into())?,
+            authorization: authorization.map(|a| a.into()),
             client
         })
     }
@@ -100,8 +103,8 @@ impl HttpClient {
             pagination.add_to_body(&mut body);
         }
 
-        let response = self.client
-            .post(self.base_url.join("/db/sms")?)
+        let url = self.base_url.join("/db/sms")?;
+        let response = self.add_authorization(self.client.post(url))
             .json(&body)
             .send()
             .await?;
@@ -112,8 +115,8 @@ impl HttpClient {
     /// Get the latest phone numbers that have been in contact with the SMS-API.
     /// This includes both senders and receivers. Pagination options are supported.
     pub async fn get_latest_numbers(&self, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<String>> {
-        let mut request = self.client
-            .post(self.base_url.join("/db/latest-numbers")?);
+        let url = self.base_url.join("/db/latest-numbers")?;
+        let mut request = self.add_authorization(self.client.post(url));
 
         // Only add a JSON body if there are pagination options.
         if let Some(pagination) = pagination {
@@ -134,8 +137,8 @@ impl HttpClient {
             pagination.add_to_body(&mut body);
         }
 
-        let response = self.client
-            .post(self.base_url.join("/db/delivery-reports")?)
+        let url = self.base_url.join("/db/delivery-reports")?;
+        let response = self.add_authorization(self.client.post(url))
             .json(&body)
             .send()
             .await?;
@@ -145,15 +148,10 @@ impl HttpClient {
 
     /// Send an SMS message to a target phone_number. The result will contain the
     /// message reference (provided from modem) and message id (used internally).
-    pub async fn send_sms(&self, phone_number: impl Into<String>, message: OutgoingMessage) -> HttpResult<HttpSmsSendResponse> {
-        let body = serde_json::json!({
-            "to": phone_number.into(),
-            "content": message.content
-        });
-
-        let response = self.client
-            .post(self.base_url.join("/sms/send")?)
-            .json(&body)
+    pub async fn send_sms(&self, message: HttpOutgoingSmsMessage) -> HttpResult<HttpSmsSendResponse> {
+        let url = self.base_url.join("/sms/send")?;
+        let response = self.add_authorization(self.client.post(url))
+            .json(&message)
             .send()
             .await?;
 
@@ -190,8 +188,8 @@ impl HttpClient {
     /// Get the configured sender SMS number. This should be used primarily for client identification.
     /// This is optional, as the API could have left this un-configured without any value set.
     pub async fn get_phone_number(&self) -> HttpResult<Option<String>> {
-        let response = self.client
-            .get(self.base_url.join("/sys/phone-number")?)
+        let url = self.base_url.join("/sys/phone-number")?;
+        let response = self.add_authorization(self.client.get(url))
             .send()
             .await?;
 
@@ -201,8 +199,8 @@ impl HttpClient {
     /// Get the modem SMS-API version string. This will be a semver format,
     /// often with feature names added as a suffix, eg: "0.0.1+sentry".
     pub async fn get_version(&self) -> HttpResult<String> {
-        let response = self.client
-            .get(self.base_url.join("/sys/version")?)
+        let url = self.base_url.join("/sys/version")?;
+        let response = self.add_authorization(self.client.get(url))
             .send()
             .await?;
 
@@ -215,11 +213,19 @@ impl HttpClient {
         T: serde::de::DeserializeOwned
     {
         let url = self.base_url.join(&format!("/sms/{route}"))?;
-        let response = self.client
-            .get(url)
+        let response = self.add_authorization(self.client.get(url))
             .send()
             .await?;
 
         read_modem_response::<T>(expected, response).await
+    }
+
+    /// Add optional HTTP authorization header to request builder.
+    fn add_authorization(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        if let Some(auth) = &self.authorization {
+            builder.header("authorization", auth)
+        } else {
+            builder
+        }
     }
 }
