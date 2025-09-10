@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 /// a phone number it would be impractical to request all of them at the
 /// same time, instead it can be read in shorter pages using limit+offset.
 /// This is applied at the server level when requesting data from database.
-#[derive(Serialize, Default, Debug)]
+#[derive(Serialize, Debug, Default, Clone)]
 pub struct HttpPaginationOptions {
 
     /// The maximum amount of return values.
@@ -23,6 +23,24 @@ pub struct HttpPaginationOptions {
     pub reverse: Option<bool>
 }
 impl HttpPaginationOptions {
+
+    /// Set the limit/page size.
+    pub fn with_limit(mut self, limit: u64) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+
+    /// Set request position offset.
+    pub fn with_offset(mut self, offset: u64) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
+    /// Set the reverse state for options.
+    pub fn with_reverse(mut self, reverse: bool) -> Self {
+        self.reverse = Some(reverse);
+        self
+    }
 
     /// Add pagination options to a json Value.
     pub fn add_to_body(&self, body: &mut serde_json::Value) {

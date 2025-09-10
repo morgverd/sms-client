@@ -6,6 +6,7 @@ use crate::http::error::*;
 
 pub mod types;
 pub mod error;
+pub mod paginator;
 
 /// Take a response from the client, verify that the status code is 200,
 /// then read JSON body and ensure success is true and finally return response value.
