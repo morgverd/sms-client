@@ -46,10 +46,32 @@ impl Client {
         &self.http
     }
 
+    /// Get a cloned Arc to the HTTP client for use in async contexts.
+    pub fn http_arc(&self) -> std::sync::Arc<http::HttpClient> {
+        std::sync::Arc::clone(&self.http)
+    }
+
     /// Set the callback for incoming WebSocket messages.
     /// This must be called before starting the WebSocket connection.
     #[cfg(feature = "websocket")]
     pub async fn on_message<F>(&self, callback: F) -> ClientResult<()>
+    where
+        F: Fn(ws::types::WebsocketMessage, std::sync::Arc<Self>) + Send + Sync + 'static,
+    {
+        let mut ws_guard = self.create_or_get_ws_client().await?;
+        if let Some(ws_client) = ws_guard.as_mut() {
+            let client = std::sync::Arc::new(self.clone());
+            ws_client.on_message(move |msg| {
+                callback(msg, std::sync::Arc::clone(&client));
+            });
+        }
+        Ok(())
+    }
+
+    /// Set the callback for incoming WebSocket messages (simple version without client copy).
+    /// This must be called before starting the WebSocket connection.
+    #[cfg(feature = "websocket")]
+    pub async fn on_message_simple<F>(&self, callback: F) -> ClientResult<()>
     where
         F: Fn(ws::types::WebsocketMessage) + Send + Sync + 'static,
     {
