@@ -8,16 +8,18 @@ pub enum ClientError {
     HttpError(#[from] crate::http::error::HttpError),
 
     /// WebSocket client error
+    #[cfg(feature = "websocket")]
     #[error("WebSocket client error: {0}")]
     WebsocketError(#[from] crate::ws::error::WebsocketError),
 
-    /// No WebSocket URL configured
-    #[error("No WebSocket URL configured")]
-    MissingConfiguration,
+    /// Missing some configuration value
+    #[error("Missing required configuration: {0}")]
+    MissingConfiguration(&'static str),
 
     /// No WebSocket client initialized
+    #[cfg(feature = "websocket")]
     #[error("No WebSocket client initialized")]
-    NoWebsocketClient,
+    NoWebsocketClient
 }
 
 /// Result type alias for Websocket operations.

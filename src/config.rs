@@ -2,12 +2,6 @@
 
 use std::time::Duration;
 
-const HTTP_DEFAULT_BASE_TIMEOUT: u64 = 5;
-const HTTP_DEFAULT_MODEM_TIMEOUT: u64 = 20;
-const WS_DEFAULT_RECONNECT_INTERVAL: u64 = 5;
-const WS_DEFAULT_PING_INTERVAL: u64 = 10;
-const WS_DEFAULT_PING_TIMEOUT: u64 = 30;
-
 /// HTTP-specific configuration.
 #[derive(Clone, Debug)]
 pub struct HttpConfig {
@@ -30,13 +24,21 @@ pub struct HttpConfig {
 }
 impl HttpConfig {
 
+    /// The default amount of seconds before an HTTP request should time out.
+    /// If there is no modem_timeout, this is applied to all requests.
+    pub const HTTP_DEFAULT_BASE_TIMEOUT: u64 = 5;
+
+    /// The default amount of seconds before an HTTP request that interacts directly
+    /// with the modem should time out. This should be longer to allow for carrier response.
+    pub const HTTP_DEFAULT_MODEM_TIMEOUT: u64 = 20;
+
     /// Create a new HTTP configuration with default settings.
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
             authorization: None,
-            base_timeout: Duration::from_secs(HTTP_DEFAULT_BASE_TIMEOUT),
-            modem_timeout: Some(Duration::from_secs(HTTP_DEFAULT_MODEM_TIMEOUT))
+            base_timeout: Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
+            modem_timeout: Some(Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
         }
     }
 
@@ -63,13 +65,14 @@ impl Default for HttpConfig {
         Self {
             url: "http://localhost:3000".to_string(),
             authorization: None,
-            base_timeout: Duration::from_secs(HTTP_DEFAULT_BASE_TIMEOUT),
-            modem_timeout: Some(Duration::from_secs(HTTP_DEFAULT_MODEM_TIMEOUT))
+            base_timeout: Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
+            modem_timeout: Some(Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
         }
     }
 }
 
 /// WebSocket-specific configuration.
+#[cfg(feature = "websocket")]
 #[derive(Clone, Debug)]
 pub struct WebsocketConfig {
 
@@ -94,7 +97,18 @@ pub struct WebsocketConfig {
     /// Maximum reconnection attempts (None = unlimited).
     pub max_reconnect_attempts: Option<u32>,
 }
+#[cfg(feature = "websocket")]
 impl WebsocketConfig {
+
+    /// The default interval to use between connection attempts.
+    /// Sequential attempts use a backoff up to 60 seconds.
+    pub const WS_DEFAULT_RECONNECT_INTERVAL: u64 = 5;
+
+    /// The interval between sending ping messages.
+    pub const WS_DEFAULT_PING_INTERVAL: u64 = 10;
+
+    /// The duration between the last ping to count as a timeout.
+    pub const WS_DEFAULT_PING_TIMEOUT: u64 = 30;
 
     /// Create a new WebSocket configuration with default settings.
     pub fn new(url: impl Into<String>) -> Self {
@@ -102,9 +116,9 @@ impl WebsocketConfig {
             url: url.into(),
             authorization: None,
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(WS_DEFAULT_RECONNECT_INTERVAL),
-            ping_interval: Duration::from_secs(WS_DEFAULT_PING_INTERVAL),
-            ping_timeout: Duration::from_secs(WS_DEFAULT_PING_TIMEOUT),
+            reconnect_interval: Duration::from_secs(Self::WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
         }
     }
@@ -145,15 +159,16 @@ impl WebsocketConfig {
         self
     }
 }
+#[cfg(feature = "websocket")]
 impl Default for WebsocketConfig {
     fn default() -> Self {
         Self {
             url: "ws://localhost:3000/ws".to_string(),
             authorization: None,
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(WS_DEFAULT_RECONNECT_INTERVAL),
-            ping_interval: Duration::from_secs(WS_DEFAULT_PING_INTERVAL),
-            ping_timeout: Duration::from_secs(WS_DEFAULT_PING_TIMEOUT),
+            reconnect_interval: Duration::from_secs(Self::WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None
         }
     }
@@ -167,7 +182,8 @@ pub struct ClientConfig {
     pub http: HttpConfig,
 
     /// Optional WebSocket configuration.
-    pub websocket: Option<WebsocketConfig>,
+    #[cfg(feature = "websocket")]
+    pub websocket: Option<WebsocketConfig>
 }
 impl ClientConfig {
 
@@ -182,6 +198,8 @@ impl ClientConfig {
     pub fn http_only(url: impl Into<String>) -> Self {
         Self {
             http: HttpConfig::new(url),
+
+            #[cfg(feature = "websocket")]
             websocket: None
         }
     }
@@ -197,6 +215,7 @@ impl ClientConfig {
     ///     "ws://192.168.1.2:3000/ws"
     /// );
     /// ```
+    #[cfg(feature = "websocket")]
     pub fn with_websocket(http_url: impl Into<String>, ws_url: impl Into<String>) -> Self {
         Self {
             http: HttpConfig::new(http_url),
@@ -222,6 +241,7 @@ impl ClientConfig {
     ///
     /// let config = ClientConfig::from_parts(http, Some(ws));
     /// ```
+    #[cfg(feature = "websocket")]
     pub fn from_parts(http: HttpConfig, websocket: Option<WebsocketConfig>) -> Self {
         Self { http, websocket }
     }
@@ -240,6 +260,8 @@ impl ClientConfig {
     pub fn with_auth(mut self, token: impl Into<String>) -> Self {
         let token = token.into();
         self.http.authorization = Some(token.clone());
+
+        #[cfg(feature = "websocket")]
         if let Some(ws) = &mut self.websocket {
             ws.authorization = Some(token);
         }
@@ -282,6 +304,7 @@ impl ClientConfig {
     ///       .with_max_reconnect_attempts(Some(5))
     /// });
     /// ```
+    #[cfg(feature = "websocket")]
     pub fn configure_websocket<F>(mut self, f: F) -> Self
     where
         F: FnOnce(WebsocketConfig) -> WebsocketConfig,
@@ -301,12 +324,14 @@ impl ClientConfig {
     /// let config = ClientConfig::http_only("http://192.168.1.2:3000")
     ///     .add_websocket(WebsocketConfig::new("ws://192.168.1.2:3000/ws"));
     /// ```
+    #[cfg(feature = "websocket")]
     pub fn add_websocket(mut self, websocket: WebsocketConfig) -> Self {
         self.websocket = Some(websocket);
         self
     }
 
     /// Remove WebSocket support from the configuration.
+    #[cfg(feature = "websocket")]
     pub fn without_websocket(mut self) -> Self {
         self.websocket = None;
         self
@@ -316,8 +341,15 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             http: HttpConfig::default(),
+
+            #[cfg(feature = "websocket")]
             websocket: Some(WebsocketConfig::default()),
         }
+    }
+}
+impl From<HttpConfig> for ClientConfig {
+    fn from(http: HttpConfig) -> Self {
+        ClientConfig { http, ..Default::default() }
     }
 }
 
@@ -329,21 +361,31 @@ impl Default for ClientConfig {
 ///
 /// let config = ConfigBuilder::new()
 ///     .http_url("http://192.168.1.2:3000")
-///     .websocket_url("ws://192.168.1.2:3000/ws")
 ///     .auth_token("my-token")
-///     .auto_reconnect(true)
 ///     .build();
 /// ```
 pub struct ConfigBuilder {
     http_url: Option<String>,
-    ws_url: Option<String>,
     auth_token: Option<String>,
     http_base_timeout: Duration,
     http_modem_timeout: Option<Duration>,
+
+    #[cfg(feature = "websocket")]
+    ws_url: Option<String>,
+
+    #[cfg(feature = "websocket")]
     auto_reconnect: bool,
+
+    #[cfg(feature = "websocket")]
     reconnect_interval: Duration,
+
+    #[cfg(feature = "websocket")]
     ping_interval: Duration,
+
+    #[cfg(feature = "websocket")]
     ping_timeout: Duration,
+
+    #[cfg(feature = "websocket")]
     max_reconnect_attempts: Option<u32>,
 }
 impl ConfigBuilder {
@@ -356,12 +398,6 @@ impl ConfigBuilder {
     /// Set the HTTP URL.
     pub fn http_url(mut self, url: impl Into<String>) -> Self {
         self.http_url = Some(url.into());
-        self
-    }
-
-    /// Set the WebSocket URL.
-    pub fn websocket_url(mut self, url: impl Into<String>) -> Self {
-        self.ws_url = Some(url.into());
         self
     }
 
@@ -383,31 +419,43 @@ impl ConfigBuilder {
         self
     }
 
+    /// Set the WebSocket URL.
+    #[cfg(feature = "websocket")]
+    pub fn websocket_url(mut self, url: impl Into<String>) -> Self {
+        self.ws_url = Some(url.into());
+        self
+    }
+
     /// Enable or disable WebSocket auto-reconnection.
+    #[cfg(feature = "websocket")]
     pub fn auto_reconnect(mut self, enabled: bool) -> Self {
         self.auto_reconnect = enabled;
         self
     }
 
     /// Set the WebSocket reconnection interval.
+    #[cfg(feature = "websocket")]
     pub fn reconnect_interval(mut self, interval: Duration) -> Self {
         self.reconnect_interval = interval;
         self
     }
 
     /// Set the WebSocket ping interval.
+    #[cfg(feature = "websocket")]
     pub fn ping_interval(mut self, interval: Duration) -> Self {
         self.ping_interval = interval;
         self
     }
 
     /// Set the WebSocket ping timeout.
+    #[cfg(feature = "websocket")]
     pub fn ping_timeout(mut self, timeout: Duration) -> Self {
         self.ping_timeout = timeout;
         self
     }
 
     /// Set maximum WebSocket reconnection attempts.
+    #[cfg(feature = "websocket")]
     pub fn max_reconnect_attempts(mut self, max: Option<u32>) -> Self {
         self.max_reconnect_attempts = max;
         self
@@ -425,6 +473,7 @@ impl ConfigBuilder {
             http = http.with_auth(token.clone());
         }
 
+        #[cfg(feature = "websocket")]
         let websocket = self.ws_url.map(|url| {
             let mut ws = WebsocketConfig::new(url)
                 .with_auto_reconnect(self.auto_reconnect)
@@ -440,21 +489,39 @@ impl ConfigBuilder {
             ws
         });
 
-        ClientConfig::from_parts(http, websocket)
+        #[cfg(feature = "websocket")]
+        let client = ClientConfig::from_parts(http, websocket);
+
+        #[cfg(not(feature = "websocket"))]
+        let client = ClientConfig::from(http);
+
+        client
     }
 }
 impl Default for ConfigBuilder {
     fn default() -> Self {
         Self {
             http_url: None,
-            ws_url: None,
             auth_token: None,
-            http_base_timeout: Duration::from_secs(HTTP_DEFAULT_BASE_TIMEOUT),
-            http_modem_timeout: Some(Duration::from_secs(HTTP_DEFAULT_MODEM_TIMEOUT)),
+            http_base_timeout: Duration::from_secs(HttpConfig::HTTP_DEFAULT_BASE_TIMEOUT),
+            http_modem_timeout: Some(Duration::from_secs(HttpConfig::HTTP_DEFAULT_MODEM_TIMEOUT)),
+
+            #[cfg(feature = "websocket")]
+            ws_url: None,
+
+            #[cfg(feature = "websocket")]
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(WS_DEFAULT_RECONNECT_INTERVAL),
-            ping_interval: Duration::from_secs(WS_DEFAULT_PING_INTERVAL),
-            ping_timeout: Duration::from_secs(WS_DEFAULT_PING_TIMEOUT),
+
+            #[cfg(feature = "websocket")]
+            reconnect_interval: Duration::from_secs(WebsocketConfig::WS_DEFAULT_RECONNECT_INTERVAL),
+
+            #[cfg(feature = "websocket")]
+            ping_interval: Duration::from_secs(WebsocketConfig::WS_DEFAULT_PING_INTERVAL),
+
+            #[cfg(feature = "websocket")]
+            ping_timeout: Duration::from_secs(WebsocketConfig::WS_DEFAULT_PING_TIMEOUT),
+
+            #[cfg(feature = "websocket")]
             max_reconnect_attempts: None,
         }
     }
