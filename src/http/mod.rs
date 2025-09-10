@@ -1,3 +1,6 @@
+//! SMS-API HTTP client.
+//! This can be used to interface with the HTTP API standalone if required.
+
 use crate::http::types::*;
 use crate::http::error::*;
 
@@ -70,6 +73,7 @@ where
         .map_err(HttpError::JsonError)
 }
 
+/// SMS-API HTTP interface client.
 pub struct HttpClient {
     base_url: reqwest::Url,
     authorization: Option<String>,
