@@ -1,9 +1,7 @@
 //! HTTP interface related errors.
 
-use thiserror::Error;
-
 /// An error originating from the SMS HttpClient.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum HttpError {
 
     /// Network request failed (connection issues, timeouts, etc.)

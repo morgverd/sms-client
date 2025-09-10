@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 /// This is applied at the server level when requesting data from database.
 #[derive(Serialize, Default, Debug)]
 pub struct HttpPaginationOptions {
+
     /// The maximum amount of return values.
     pub limit: Option<u64>,
 
@@ -40,6 +41,7 @@ impl HttpPaginationOptions {
 /// The outgoing SMS message to be sent to a target number.
 #[derive(Serialize, Debug, Default)]
 pub struct HttpOutgoingSmsMessage {
+
     /// The target phone number, this should be in international format.
     pub to: String,
 
@@ -85,40 +87,23 @@ impl HttpOutgoingSmsMessage {
     }
 }
 
-/// Represents a stored SMS message from the database.
+/// Response returned after sending an SMS message.
 #[derive(Deserialize, Debug)]
-pub struct HttpSmsStoredMessage {
-    /// Unique identifier for the message.
+pub struct HttpSmsSendResponse {
+
+    /// The unique ID assigned to the already sent message.
     pub message_id: i64,
 
-    /// The phone number associated with this message.
-    pub phone_number: String,
-
-    /// The actual text content of the message.
-    pub message_content: String,
-
-    /// Optional reference number for message tracking.
-    /// This is assigned by the modem and is only present for outgoing messages.
-    pub message_reference: Option<u8>,
-
-    /// Whether this message was sent (true) or received (false).
-    pub is_outgoing: bool,
-
-    /// Current status of the message (e.g., "sent", "delivered", "failed").
-    pub status: String,
-
-    /// Unix timestamp when the message was created.
-    pub created_at: u32,
-
-    /// Optional Unix timestamp when the message was completed/delivered.
-    pub completed_at: Option<u32>
+    /// Reference ID for tracking the message.
+    pub reference_id: u8
 }
 
 /// Delivery report for an already sent SMS message.
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HttpSmsDeliveryReport {
+
     /// Unique identifier for this delivery report.
-    pub report_id: i64,
+    pub report_id: Option<i64>,
 
     /// Delivery status code from the network.
     pub status: u8,
@@ -127,22 +112,13 @@ pub struct HttpSmsDeliveryReport {
     pub is_final: bool,
 
     /// Unix timestamp when this report was created.
-    pub created_at: u32
-}
-
-/// Response returned after sending an SMS message.
-#[derive(Deserialize, Debug)]
-pub struct HttpSmsSendResponse {
-    /// The unique ID assigned to the already sent message.
-    pub message_id: i64,
-
-    /// Reference ID for tracking the message.
-    pub reference_id: u8
+    pub created_at: Option<u32>
 }
 
 /// Network registration status of the modem.
 #[derive(Deserialize, Debug)]
 pub struct HttpModemNetworkStatusResponse {
+
     /// Registration status code (0=not registered, 1=registered home, 5=registered roaming).
     pub registration: u8,
 
@@ -153,6 +129,7 @@ pub struct HttpModemNetworkStatusResponse {
 /// Signal strength information from the modem.
 #[derive(Deserialize, Debug)]
 pub struct HttpModemSignalStrengthResponse {
+
     /// Received Signal Strength Indicator (0-31, 99=unknown).
     pub rssi: u8,
 
@@ -163,6 +140,7 @@ pub struct HttpModemSignalStrengthResponse {
 /// Network operator information from the modem.
 #[derive(Deserialize, Debug)]
 pub struct HttpModemNetworkOperatorResponse {
+
     /// Operator selection status (0=automatic, 1=manual).
     pub status: u8,
 
@@ -176,6 +154,7 @@ pub struct HttpModemNetworkOperatorResponse {
 /// Battery status information from the modem.
 #[derive(Deserialize, Debug)]
 pub struct HttpModemBatteryLevelResponse {
+
     /// Battery status (0=not charging, 1=charging, 2=no battery).
     pub status: u8,
 

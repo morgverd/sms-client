@@ -82,24 +82,21 @@ pub struct HttpClient {
 impl HttpClient {
 
     /// Create a new HTTP client that uses the base_url.
-    pub fn new(
-        base_url: impl Into<String>,
-        authorization: Option<impl Into<String>>
-    ) -> HttpResult<Self> {
+    pub fn new(config: crate::config::HttpConfig) -> HttpResult<Self> {
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
+            .timeout(config.timeout)
             .build()?;
 
         Ok(Self {
-            base_url: reqwest::Url::parse(&base_url.into())?,
-            authorization: authorization.map(|a| a.into()),
+            base_url: reqwest::Url::parse(config.url.as_str())?,
+            authorization: config.authorization.map(|a| a.into()),
             client
         })
     }
 
     /// Get messages sent to and from a given phone number.
     /// Pagination options are supported.
-    pub async fn get_messages(&self, phone_number: impl Into<String>, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<HttpSmsStoredMessage>> {
+    pub async fn get_messages(&self, phone_number: impl Into<String>, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<crate::types::SmsStoredMessage>> {
         let mut body = serde_json::json!({
             "phone_number": phone_number.into()
         });
