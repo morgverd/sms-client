@@ -2,25 +2,41 @@
 
 use std::time::Duration;
 
+const HTTP_DEFAULT_BASE_TIMEOUT: u64 = 5;
+const HTTP_DEFAULT_MODEM_TIMEOUT: u64 = 20;
+const WS_DEFAULT_RECONNECT_INTERVAL: u64 = 5;
+const WS_DEFAULT_PING_INTERVAL: u64 = 10;
+const WS_DEFAULT_PING_TIMEOUT: u64 = 30;
+
 /// HTTP-specific configuration.
 #[derive(Clone, Debug)]
 pub struct HttpConfig {
+
     /// HTTP base URL. eg: http://192.168.1.2:3000
     pub url: String,
 
     /// Optional HTTP authorization header token.
     pub authorization: Option<String>,
 
-    /// Request timeout duration.
-    pub timeout: Duration,
+    /// A default timeout to apply to all requests that do not have
+    /// their own timeout (this applies to all if modem_timeout is None,
+    /// otherwise only database and sys queries).
+    pub base_timeout: Duration,
+
+    /// An optional timeout to use specifically for modem requests
+    /// (requests that must send and receive modem data). This should
+    /// be higher than the default timeout as they can take longer.
+    pub modem_timeout: Option<Duration>,
 }
 impl HttpConfig {
+
     /// Create a new HTTP configuration with default settings.
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
             authorization: None,
-            timeout: Duration::from_secs(10),
+            base_timeout: Duration::from_secs(HTTP_DEFAULT_BASE_TIMEOUT),
+            modem_timeout: Some(Duration::from_secs(HTTP_DEFAULT_MODEM_TIMEOUT))
         }
     }
 
@@ -30,9 +46,15 @@ impl HttpConfig {
         self
     }
 
-    /// Set the request timeout.
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
+    /// Set the base request timeout.
+    pub fn with_base_timeout(mut self, timeout: Duration) -> Self {
+        self.base_timeout = timeout;
+        self
+    }
+
+    /// Set the modem request timeout.
+    pub fn with_modem_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.modem_timeout = timeout;
         self
     }
 }
@@ -41,7 +63,8 @@ impl Default for HttpConfig {
         Self {
             url: "http://localhost:3000".to_string(),
             authorization: None,
-            timeout: Duration::from_secs(10),
+            base_timeout: Duration::from_secs(HTTP_DEFAULT_BASE_TIMEOUT),
+            modem_timeout: Some(Duration::from_secs(HTTP_DEFAULT_MODEM_TIMEOUT))
         }
     }
 }
@@ -49,6 +72,7 @@ impl Default for HttpConfig {
 /// WebSocket-specific configuration.
 #[derive(Clone, Debug)]
 pub struct WebsocketConfig {
+
     /// Websocket event channel URL. eg: ws://192.168.1.2:3000/ws
     pub url: String,
 
@@ -71,15 +95,16 @@ pub struct WebsocketConfig {
     pub max_reconnect_attempts: Option<u32>,
 }
 impl WebsocketConfig {
+
     /// Create a new WebSocket configuration with default settings.
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
             authorization: None,
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(5),
-            ping_interval: Duration::from_secs(30),
-            ping_timeout: Duration::from_secs(10),
+            reconnect_interval: Duration::from_secs(WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: Duration::from_secs(WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: Duration::from_secs(WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
         }
     }
@@ -126,10 +151,10 @@ impl Default for WebsocketConfig {
             url: "ws://localhost:3000/ws".to_string(),
             authorization: None,
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(5),
-            ping_interval: Duration::from_secs(30),
-            ping_timeout: Duration::from_secs(10),
-            max_reconnect_attempts: None,
+            reconnect_interval: Duration::from_secs(WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: Duration::from_secs(WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: Duration::from_secs(WS_DEFAULT_PING_TIMEOUT),
+            max_reconnect_attempts: None
         }
     }
 }
@@ -137,6 +162,7 @@ impl Default for WebsocketConfig {
 /// Complete client configuration.
 #[derive(Clone, Debug)]
 pub struct ClientConfig {
+
     /// HTTP configuration.
     pub http: HttpConfig,
 
@@ -144,6 +170,7 @@ pub struct ClientConfig {
     pub websocket: Option<WebsocketConfig>,
 }
 impl ClientConfig {
+
     /// Create a new configuration with only HTTP support.
     ///
     /// # Example
@@ -155,7 +182,7 @@ impl ClientConfig {
     pub fn http_only(url: impl Into<String>) -> Self {
         Self {
             http: HttpConfig::new(url),
-            websocket: None,
+            websocket: None
         }
     }
 
@@ -173,7 +200,7 @@ impl ClientConfig {
     pub fn with_websocket(http_url: impl Into<String>, ws_url: impl Into<String>) -> Self {
         Self {
             http: HttpConfig::new(http_url),
-            websocket: Some(WebsocketConfig::new(ws_url)),
+            websocket: Some(WebsocketConfig::new(ws_url))
         }
     }
 
@@ -186,7 +213,7 @@ impl ClientConfig {
     ///
     /// let http = HttpConfig::new("http://192.168.1.2:3000")
     ///     .with_auth("token123")
-    ///     .with_timeout(Duration::from_secs(30));
+    ///     .with_base_timeout(Duration::from_secs(30));
     ///
     /// let ws = WebsocketConfig::new("ws://192.168.1.2:3000/ws")
     ///     .with_auth("token123")
@@ -228,7 +255,7 @@ impl ClientConfig {
     ///
     /// let config = ClientConfig::http_only("http://192.168.1.2:3000")
     ///     .configure_http(|http| {
-    ///         http.with_timeout(Duration::from_secs(30))
+    ///         http.with_base_timeout(Duration::from_secs(30))
     ///             .with_auth("token")
     ///     });
     /// ```
@@ -311,7 +338,8 @@ pub struct ConfigBuilder {
     http_url: Option<String>,
     ws_url: Option<String>,
     auth_token: Option<String>,
-    http_timeout: Duration,
+    http_base_timeout: Duration,
+    http_modem_timeout: Option<Duration>,
     auto_reconnect: bool,
     reconnect_interval: Duration,
     ping_interval: Duration,
@@ -319,6 +347,7 @@ pub struct ConfigBuilder {
     max_reconnect_attempts: Option<u32>,
 }
 impl ConfigBuilder {
+
     /// Create a new builder with default values.
     pub fn new() -> Self {
         Self::default()
@@ -342,9 +371,15 @@ impl ConfigBuilder {
         self
     }
 
-    /// Set the HTTP request timeout.
-    pub fn http_timeout(mut self, timeout: Duration) -> Self {
-        self.http_timeout = timeout;
+    /// Set the base HTTP request timeout.
+    pub fn http_base_timeout(mut self, timeout: Duration) -> Self {
+        self.http_base_timeout = timeout;
+        self
+    }
+
+    /// Set the modem HTTP request timeout.
+    pub fn http_modem_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.http_modem_timeout = timeout;
         self
     }
 
@@ -383,7 +418,8 @@ impl ConfigBuilder {
         let http_url = self.http_url.unwrap_or_else(|| "http://127.0.0.1:3000".to_string());
 
         let mut http = HttpConfig::new(http_url)
-            .with_timeout(self.http_timeout);
+            .with_base_timeout(self.http_base_timeout)
+            .with_modem_timeout(self.http_modem_timeout);
 
         if let Some(token) = &self.auth_token {
             http = http.with_auth(token.clone());
@@ -413,11 +449,12 @@ impl Default for ConfigBuilder {
             http_url: None,
             ws_url: None,
             auth_token: None,
-            http_timeout: Duration::from_secs(10),
+            http_base_timeout: Duration::from_secs(HTTP_DEFAULT_BASE_TIMEOUT),
+            http_modem_timeout: Some(Duration::from_secs(HTTP_DEFAULT_MODEM_TIMEOUT)),
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(5),
-            ping_interval: Duration::from_secs(30),
-            ping_timeout: Duration::from_secs(10),
+            reconnect_interval: Duration::from_secs(WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: Duration::from_secs(WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: Duration::from_secs(WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
         }
     }

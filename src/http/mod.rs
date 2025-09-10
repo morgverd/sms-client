@@ -77,6 +77,7 @@ where
 pub struct HttpClient {
     base_url: reqwest::Url,
     authorization: Option<String>,
+    modem_timeout: Option<std::time::Duration>,
     client: reqwest::Client
 }
 impl HttpClient {
@@ -84,12 +85,13 @@ impl HttpClient {
     /// Create a new HTTP client that uses the base_url.
     pub fn new(config: crate::config::HttpConfig) -> HttpResult<Self> {
         let client = reqwest::Client::builder()
-            .timeout(config.timeout)
+            .timeout(config.base_timeout)
             .build()?;
 
         Ok(Self {
             base_url: reqwest::Url::parse(config.url.as_str())?,
             authorization: config.authorization.map(|a| a.into()),
+            modem_timeout: config.modem_timeout,
             client
         })
     }
@@ -105,7 +107,7 @@ impl HttpClient {
         }
 
         let url = self.base_url.join("/db/sms")?;
-        let response = self.add_authorization(self.client.post(url))
+        let response = self.setup_request(false, self.client.post(url))
             .json(&body)
             .send()
             .await?;
@@ -117,7 +119,7 @@ impl HttpClient {
     /// This includes both senders and receivers. Pagination options are supported.
     pub async fn get_latest_numbers(&self, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<String>> {
         let url = self.base_url.join("/db/latest-numbers")?;
-        let mut request = self.add_authorization(self.client.post(url));
+        let mut request = self.setup_request(false, self.client.post(url));
 
         // Only add a JSON body if there are pagination options.
         if let Some(pagination) = pagination {
@@ -139,7 +141,7 @@ impl HttpClient {
         }
 
         let url = self.base_url.join("/db/delivery-reports")?;
-        let response = self.add_authorization(self.client.post(url))
+        let response = self.setup_request(false, self.client.post(url))
             .json(&body)
             .send()
             .await?;
@@ -151,7 +153,7 @@ impl HttpClient {
     /// message reference (provided from modem) and message id (used internally).
     pub async fn send_sms(&self, message: HttpOutgoingSmsMessage) -> HttpResult<HttpSmsSendResponse> {
         let url = self.base_url.join("/sms/send")?;
-        let response = self.add_authorization(self.client.post(url))
+        let response = self.setup_request(true, self.client.post(url))
             .json(&message)
             .send()
             .await?;
@@ -190,7 +192,7 @@ impl HttpClient {
     /// This is optional, as the API could have left this un-configured without any value set.
     pub async fn get_phone_number(&self) -> HttpResult<Option<String>> {
         let url = self.base_url.join("/sys/phone-number")?;
-        let response = self.add_authorization(self.client.get(url))
+        let response = self.setup_request(false, self.client.get(url))
             .send()
             .await?;
 
@@ -201,7 +203,7 @@ impl HttpClient {
     /// often with feature names added as a suffix, eg: "0.0.1+sentry".
     pub async fn get_version(&self) -> HttpResult<String> {
         let url = self.base_url.join("/sys/version")?;
-        let response = self.add_authorization(self.client.get(url))
+        let response = self.setup_request(false, self.client.get(url))
             .send()
             .await?;
 
@@ -214,15 +216,21 @@ impl HttpClient {
         T: serde::de::DeserializeOwned
     {
         let url = self.base_url.join(&format!("/sms/{route}"))?;
-        let response = self.add_authorization(self.client.get(url))
+        let response = self.setup_request(true, self.client.get(url))
             .send()
             .await?;
 
         read_modem_response::<T>(expected, response).await
     }
 
-    /// Add optional HTTP authorization header to request builder.
-    fn add_authorization(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    /// Allow for a different timeout to be used for modem requests,
+    /// and apply optional authorization header to request builder.
+    fn setup_request(&self, is_modem: bool, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        let builder = if is_modem && let Some(timeout) = &self.modem_timeout {
+            builder.timeout(*timeout)
+        } else {
+            builder
+        };
         if let Some(auth) = &self.authorization {
             builder.header("authorization", auth)
         } else {
