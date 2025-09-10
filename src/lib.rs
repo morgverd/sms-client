@@ -27,6 +27,7 @@ pub struct Client {
     ws_config: Option<config::WebsocketConfig>
 }
 impl Client {
+
     /// Create an SMS client with a connection config.
     pub fn new(config: config::ClientConfig) -> ClientResult<Self> {
         let http = http::HttpClient::new(config.http)?;

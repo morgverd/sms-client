@@ -1,7 +1,6 @@
 //! WebSocket client for receiving real-time SMS messages.
 
 use futures_util::{StreamExt, SinkExt};
-use http::StatusCode;
 use tungstenite::client::IntoClientRequest;
 use crate::ws::error::*;
 use crate::ws::types::*;
@@ -118,9 +117,22 @@ impl WebsocketClient {
     ) -> WebsocketResult<()> {
         let mut reconnect_count = 0u32;
 
+        // Create connection info, with optional events filter and authorization header.
+        let mut url = config.url.parse::<url::Url>().map_err(|e| UrlError::from(e))?;
+        if let Some(filter) = &config.filtered_events {
+            url.query_pairs_mut().append_pair("events", filter.join(",").as_str());
+        }
+        let connection = (
+            url.as_str(), // Connection URL (with events filter)
+            config.authorization
+                .as_ref()
+                .map(|auth| auth.parse::<http::HeaderValue>())
+                .transpose()? // Authorization header
+        );
+
         loop {
             // Try to establish connection
-            match Self::connect_and_handle(&config, &callback, &mut control_rx, &is_connected).await {
+            match Self::connect_and_handle(connection.clone(), config.clone(), &callback, &mut control_rx, &is_connected).await {
                 Ok(should_reconnect) => {
                     if !should_reconnect || !config.auto_reconnect {
                         break;
@@ -149,36 +161,37 @@ impl WebsocketClient {
             );
 
             // Wait before reconnecting, but check for stop signal
-            log::trace!("Reconnecting in {:?}...", delay);
+            log::debug!("Reconnecting in {:?}...", delay);
             tokio::select! {
                 _ = tokio::time::sleep(delay) => {},
                 Some(ControlMessage::Stop) = control_rx.recv() => {
-                    log::trace!("WebSocket worker stopped during reconnect delay.");
+                    log::debug!("WebSocket worker stopped during reconnect delay.");
                     break;
                 }
             }
         }
 
         *is_connected.write().await = false;
-        log::trace!("WebSocket worker terminated");
+        log::debug!("WebSocket worker terminated");
         Ok(())
     }
 
     /// Connect to WebSocket and handle messages.
     async fn connect_and_handle(
-        config: &crate::config::WebsocketConfig,
+        connection: (&str, Option<http::HeaderValue>),
+        config: crate::config::WebsocketConfig,
         callback: &Option<MessageCallback>,
         control_rx: &mut tokio::sync::mpsc::UnboundedReceiver<ControlMessage>,
         is_connected: &std::sync::Arc<tokio::sync::RwLock<bool>>,
     ) -> WebsocketResult<bool> {
-        log::debug!("Connecting to WebSocket: {}", config.url);
+        log::debug!("Connecting to WebSocket: {:?}", connection.0);
 
         // Create request with optional authorization.
-        let mut request = config.url.clone().into_client_request()?;
-        if let Some(token) = &config.authorization {
+        let mut request = connection.0.into_client_request()?;
+        if let Some(token) = connection.1 {
             request
                 .headers_mut()
-                .append("authorization", token.parse()?);
+                .append("authorization", token);
         }
 
         // Start connection, throwing a special error if unauthorized
@@ -186,16 +199,13 @@ impl WebsocketClient {
         let ws_stream = match tokio_tungstenite::connect_async(request).await {
             Ok((ws_stream, _)) => ws_stream,
             Err(e) => {
-                match &e {
-                    tungstenite::error::Error::Http(response) => {
+                if let tungstenite::error::Error::Http(response) = &e {
 
-                        // If it's a connection Http error, we should check that it's not because it's Unauthorized.
-                        // If it is, there is no use in attempting reconnections as the token is invalid.
-                        if response.status() == StatusCode::UNAUTHORIZED {
-                            return Err(WebsocketError::Unauthorized);
-                        }
-                    },
-                    _ => { }
+                    // If it's a connection Http error, we should check that it's not because it's Unauthorized.
+                    // If it is, there is no use in attempting reconnections as the token is invalid.
+                    if response.status() == http::StatusCode::UNAUTHORIZED {
+                        return Err(WebsocketError::Unauthorized);
+                    }
                 }
                 return Err(WebsocketError::from(e));
             }
