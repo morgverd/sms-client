@@ -21,6 +21,28 @@ where
 {
 
     /// Create the paginator with the http batch generator.
+    ///
+    /// # Example
+    /// ```rust
+    /// use sms_client::Client;
+    /// use sms_client::config::ClientConfig;
+    /// use sms_client::http::paginator::HttpPaginator;
+    /// use sms_client::http::types::HttpPaginationOptions;
+    ///
+    /// let http = Client::new(ClientConfig::http_only("http://localhost:3000").with_auth("token!"))?.http_arc();
+    /// let mut paginator = HttpPaginator::new(
+    ///     move |pagination| {
+    ///         let http = http.clone();
+    ///         async move {
+    ///             http.get_latest_numbers(pagination).await
+    ///         }
+    ///     },
+    ///     HttpPaginationOptions::default()
+    ///         .with_limit(10) // Do it in batches of 10.
+    ///         .with_offset(10) // Skip the first 10 results.
+    ///         .with_reverse(true) // Reverse the results set.
+    /// );
+    /// ```
     pub fn new(http_fn: F, pagination: HttpPaginationOptions) -> Self {
         let initial_limit = pagination.limit.unwrap_or(50);
 
@@ -36,6 +58,26 @@ where
     }
 
     /// Create a paginator with default pagination settings.
+    /// This starts at offset 0 with a limit of 50 per page.
+    ///
+    /// # Example
+    /// ```rust
+    /// use sms_client::http;
+    /// use sms_client::Client;
+    /// use sms_client::config::ClientConfig;
+    /// use sms_client::http::HttpClient;
+    /// use sms_client::http::paginator::HttpPaginator;
+    ///
+    /// /// View all latest numbers, in a default paginator with a limit of 50 per chunk.
+    /// async fn view_all_latest_numbers(http: HttpClient) {
+    ///     let mut paginator = HttpPaginator::with_defaults(|pagination| {
+    ///         http.get_latest_numbers(pagination)
+    ///     });
+    ///     while let Some(message) = paginator.next().await {
+    ///         log::info!("{:?}", message);
+    ///     }
+    /// }
+    /// ```
     pub fn with_defaults(http_fn: F) -> Self {
         Self::new(
             http_fn,
@@ -75,6 +117,23 @@ where
     }
 
     /// Get the next item, automatically fetching next pages as needed.
+    ///
+    /// # Example
+    /// ```rust
+    /// use sms_client::http::HttpClient;
+    /// use sms_client::http::paginator::HttpPaginator;
+    ///
+    /// async fn get_delivery_reports(message_id: i64, http: HttpClient) {
+    ///     let mut paginator = HttpPaginator::with_defaults(|pagination| {
+    ///         http.get_delivery_reports(message_id, pagination)
+    ///     }).await;
+    ///
+    ///     /// Iterate through ALL messages, with a page size of 50 (default).
+    ///     while let Some(message) = paginator.next().await {
+    ///         log::info!("{:?}", message);
+    ///     }
+    /// }
+    /// ```
     pub async fn next(&mut self) -> Option<T> {
         if self.current_index >= self.current_batch.len() {
 
@@ -99,6 +158,7 @@ where
     }
 
     /// Collect all remaining items into a Vec.
+    /// This continues to request batches until empty.
     pub async fn collect_all(mut self) -> HttpResult<Vec<T>> {
         let mut all_items = Vec::new();
 
@@ -129,6 +189,27 @@ where
     }
 
     /// Process items in chunks, calling the provided closure for each chunk.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::sync::Arc;
+    /// use sms_client::http::HttpClient;
+    /// use sms_client::http::paginator::HttpPaginator;
+    /// use sms_client::http::types::HttpPaginationOptions;
+    ///
+    /// /// Read all messages from a phone number, in chunks of 10.
+    /// async fn read_all_messages(phone_number: &str, http: Arc<HttpClient>) {
+    ///     let paginator = HttpPaginator::with_defaults(|pagination| {
+    ///         http.get_messages(phone_number, pagination)
+    ///     }).await;
+    ///
+    ///     paginator.for_each_chuck(10, |batch| {
+    ///         for message in batch {
+    ///             log::info!("{:?}", message);
+    ///         }
+    ///     }).await?;
+    /// }
+    /// ```
     pub async fn for_each_chuck<C>(mut self, chunk_size: usize, mut chunk_fn: C) -> HttpResult<()>
     where
         C: FnMut(&[T]) -> HttpResult<()>
