@@ -63,6 +63,16 @@ pub enum ModemStatusUpdateState {
     /// Modem is offline and not operational.
     Offline
 }
+impl std::fmt::Display for ModemStatusUpdateState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ModemStatusUpdateState::Startup => write!(f, "Startup"),
+            ModemStatusUpdateState::Online => write!(f, "Online"),
+            ModemStatusUpdateState::ShuttingDown => write!(f, "ShuttingDown"),
+            ModemStatusUpdateState::Offline => write!(f, "Offline")
+        }
+    }
+}
 
 /// GNSS (Global Navigation Satellite System) fix status.
 #[derive(Serialize, Deserialize, Debug, Clone)]

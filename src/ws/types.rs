@@ -40,7 +40,18 @@ pub enum WebsocketMessage {
 
     /// An unsolicited position report from GNSS.
     #[serde(rename = "gnss_position_report")]
-    GnssPositionReport(crate::types::GnssPositionReport)
+    GnssPositionReport(crate::types::GnssPositionReport),
+
+    /// WebSocket connection status update (client-side only).
+    /// This message is generated locally when there is a connection or disconnection.
+    WebsocketConnectionUpdate {
+
+        /// Connection status: true = connected, false = disconnected
+        connected: bool,
+
+        /// If connection is false, will the client attempt to automatically reconnect?
+        reconnect: bool
+    }
 }
 
 /// A callback to be run when the websocket receives a message.

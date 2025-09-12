@@ -16,7 +16,7 @@ pub mod types;
 pub mod ws;
 
 /// SMS Client with HTTP and optional WebSocket support.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     http: std::sync::Arc<http::HttpClient>,
 

@@ -108,6 +108,13 @@ impl WebsocketClient {
         }
     }
 
+    /// Helper function to emit connection status updates to callback
+    fn emit_connection_update(callback: &Option<MessageCallback>, connected: bool, reconnect: bool) {
+        if let Some(cb) = callback {
+            cb(WebsocketMessage::WebsocketConnectionUpdate { connected, reconnect });
+        }
+    }
+
     /// Main worker loop that handles connection and reconnection.
     async fn worker_loop(
         config: crate::config::WebsocketConfig,
@@ -134,18 +141,28 @@ impl WebsocketClient {
             // Try to establish connection
             match Self::connect_and_handle(connection.clone(), config.clone(), &callback, &mut control_rx, &is_connected).await {
                 Ok(should_reconnect) => {
-                    if !should_reconnect || !config.auto_reconnect {
+
+                    // Emit disconnection event
+                    let will_reconnect = should_reconnect && config.auto_reconnect;
+                    Self::emit_connection_update(&callback, false, will_reconnect);
+
+                    if !will_reconnect {
                         break;
                     }
                     reconnect_count += 1;
                 }
                 Err(e) => {
-                    // If unauthorized, there is no use in attempting reconnections.
-                    log::error!("WebSocket error: {:#?}", e);
                     if matches!(e, WebsocketError::Unauthorized) {
                         return Err(e);
                     }
-                    if !config.auto_reconnect {
+
+                    // Emit disconnection event
+                    let will_reconnect = config.auto_reconnect;
+                    Self::emit_connection_update(&callback, false, will_reconnect);
+
+                    // If unauthorized, there is no use in attempting reconnections.
+                    log::error!("WebSocket error: {:#?}", e);
+                    if !will_reconnect {
                         break;
                     }
                     reconnect_count += 1;
@@ -213,6 +230,9 @@ impl WebsocketClient {
 
         *is_connected.write().await = true;
         log::debug!("WebSocket connected successfully");
+
+        // Emit connection event
+        Self::emit_connection_update(callback, true, false);
 
         let mut ping_interval = tokio::time::interval(config.ping_interval);
         ping_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -308,5 +328,13 @@ impl Drop for WebsocketClient {
         if let Some(tx) = &self.control_tx {
             let _ = tx.send(ControlMessage::Stop);
         }
+    }
+}
+impl std::fmt::Debug for WebsocketClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebsocketClient")
+            .field("url", &self.config.url)
+            .field("is_connected", &self.is_connected)
+            .finish()
     }
 }

@@ -75,6 +75,7 @@ where
 }
 
 /// SMS-API HTTP interface client.
+#[derive(Debug)]
 pub struct HttpClient {
     base_url: reqwest::Url,
     authorization: Option<String>,
