@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 /// a phone number it would be impractical to request all of them at the
 /// same time, instead it can be read in shorter pages using limit+offset.
 /// This is applied at the server level when requesting data from database.
-#[derive(Serialize, Debug, Default, Clone)]
+#[derive(Serialize, Default, Debug, Clone, Copy)]
 pub struct HttpPaginationOptions {
 
     /// The maximum amount of return values.
@@ -60,7 +60,7 @@ impl HttpPaginationOptions {
 }
 
 /// The outgoing SMS message to be sent to a target number.
-#[derive(Serialize, Debug, Default)]
+#[derive(Serialize, Default, Debug, Clone)]
 pub struct HttpOutgoingSmsMessage {
 
     /// The target phone number, this should be in international format.
@@ -111,7 +111,7 @@ impl HttpOutgoingSmsMessage {
 }
 
 /// Response returned after sending an SMS message.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub struct HttpSmsSendResponse {
 
     /// The unique ID assigned to the already sent message.
@@ -122,7 +122,7 @@ pub struct HttpSmsSendResponse {
 }
 
 /// Delivery report for an already sent SMS message.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct HttpSmsDeliveryReport {
 
     /// Unique identifier for this delivery report.
@@ -139,7 +139,7 @@ pub struct HttpSmsDeliveryReport {
 }
 
 /// Network registration status of the modem.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub struct HttpModemNetworkStatusResponse {
 
     /// Registration status code (0=not registered, 1=registered home, 5=registered roaming).
@@ -150,7 +150,7 @@ pub struct HttpModemNetworkStatusResponse {
 }
 
 /// Signal strength information from the modem.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub struct HttpModemSignalStrengthResponse {
 
     /// Received Signal Strength Indicator (0-31, 99=unknown).
@@ -161,7 +161,7 @@ pub struct HttpModemSignalStrengthResponse {
 }
 
 /// Network operator information from the modem.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct HttpModemNetworkOperatorResponse {
 
     /// Operator selection status (0=automatic, 1=manual).
@@ -175,7 +175,7 @@ pub struct HttpModemNetworkOperatorResponse {
 }
 
 /// Battery status information from the modem.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub struct HttpModemBatteryLevelResponse {
 
     /// Battery status (0=not charging, 1=charging, 2=no battery).
@@ -187,3 +187,22 @@ pub struct HttpModemBatteryLevelResponse {
     /// Battery voltage in volts.
     pub voltage: f32
 }
+
+/// Combine an outgoing message and send response into a dummy SmsStoredMessage.
+impl From<(HttpOutgoingSmsMessage, HttpSmsSendResponse)> for crate::types::SmsStoredMessage {
+    fn from(value: (HttpOutgoingSmsMessage, HttpSmsSendResponse)) -> crate::types::SmsStoredMessage {
+        crate::types::SmsStoredMessage {
+            message_id: value.1.message_id,
+            phone_number: value.0.to,
+            message_content: value.0.content,
+            message_reference: Some(value.1.reference_id),
+            is_outgoing: true,
+            status: "Unknown".to_string(),
+            created_at: None,
+            completed_at: None
+        }
+    }
+}
+
+/// Used in latest-numbers return value, as a number and friendly name.
+pub type LatestNumberFriendlyNamePair = (String, Option<String>);

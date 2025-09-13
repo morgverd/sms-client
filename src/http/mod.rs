@@ -98,6 +98,37 @@ impl HttpClient {
         })
     }
 
+    /// Set/Remove the friendly name for a given phone number.
+    pub async fn set_friendly_name(&self, phone_number: impl Into<String>, friendly_name: Option<impl Into<String>>) -> HttpResult<bool> {
+        let body = serde_json::json!({
+            "phone_number": phone_number.into(),
+            "friendly_name": friendly_name.map(Into::into)
+        });
+
+        let url = self.base_url.join("/db/friendly-names/set")?;
+        let response = self.setup_request(false, self.client.post(url))
+            .json(&body)
+            .send()
+            .await?;
+
+        read_http_response(response).await
+    }
+
+    /// Get the friendly name associated with a given phone number.
+    pub async fn get_friendly_name(&self, phone_number: impl Into<String>) -> HttpResult<Option<String>> {
+        let body = serde_json::json!({
+            "phone_number": phone_number.into()
+        });
+
+        let url = self.base_url.join("/db/friendly-names/set")?;
+        let response = self.setup_request(false, self.client.get(url))
+            .json(&body)
+            .send()
+            .await?;
+
+        read_http_response(response).await
+    }
+
     /// Get messages sent to and from a given phone number.
     /// Pagination options are supported.
     pub async fn get_messages(&self, phone_number: impl Into<String>, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<crate::types::SmsStoredMessage>> {
@@ -119,7 +150,7 @@ impl HttpClient {
 
     /// Get the latest phone numbers that have been in contact with the SMS-API.
     /// This includes both senders and receivers. Pagination options are supported.
-    pub async fn get_latest_numbers(&self, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<String>> {
+    pub async fn get_latest_numbers(&self, pagination: Option<HttpPaginationOptions>) -> HttpResult<Vec<LatestNumberFriendlyNamePair>> {
         let url = self.base_url.join("/db/latest-numbers")?;
         let mut request = self.setup_request(false, self.client.post(url));
 
@@ -153,10 +184,10 @@ impl HttpClient {
 
     /// Send an SMS message to a target phone_number. The result will contain the
     /// message reference (provided from modem) and message id (used internally).
-    pub async fn send_sms(&self, message: HttpOutgoingSmsMessage) -> HttpResult<HttpSmsSendResponse> {
+    pub async fn send_sms(&self, message: &HttpOutgoingSmsMessage) -> HttpResult<HttpSmsSendResponse> {
         let url = self.base_url.join("/sms/send")?;
         let response = self.setup_request(true, self.client.post(url))
-            .json(&message)
+            .json(message)
             .send()
             .await?;
 
