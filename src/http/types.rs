@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 /// a phone number it would be impractical to request all of them at the
 /// same time, instead it can be read in shorter pages using limit+offset.
 /// This is applied at the server level when requesting data from database.
-#[derive(Serialize, Default, Debug, Clone, Copy)]
+#[derive(Serialize, PartialEq, Default, Debug, Clone, Copy)]
 pub struct HttpPaginationOptions {
 
     /// The maximum amount of return values.
@@ -60,7 +60,7 @@ impl HttpPaginationOptions {
 }
 
 /// The outgoing SMS message to be sent to a target number.
-#[derive(Serialize, Default, Debug, Clone)]
+#[derive(Serialize, PartialEq, Default, Debug, Clone)]
 pub struct HttpOutgoingSmsMessage {
 
     /// The target phone number, this should be in international format.
@@ -111,7 +111,7 @@ impl HttpOutgoingSmsMessage {
 }
 
 /// Response returned after sending an SMS message.
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpSmsSendResponse {
 
     /// The unique ID assigned to the already sent message.
@@ -122,7 +122,7 @@ pub struct HttpSmsSendResponse {
 }
 
 /// Delivery report for an already sent SMS message.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpSmsDeliveryReport {
 
     /// Unique identifier for this delivery report.
@@ -139,7 +139,7 @@ pub struct HttpSmsDeliveryReport {
 }
 
 /// Network registration status of the modem.
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpModemNetworkStatusResponse {
 
     /// Registration status code (0=not registered, 1=registered home, 5=registered roaming).
@@ -150,7 +150,7 @@ pub struct HttpModemNetworkStatusResponse {
 }
 
 /// Signal strength information from the modem.
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpModemSignalStrengthResponse {
 
     /// Received Signal Strength Indicator (0-31, 99=unknown).
@@ -161,7 +161,7 @@ pub struct HttpModemSignalStrengthResponse {
 }
 
 /// Network operator information from the modem.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct HttpModemNetworkOperatorResponse {
 
     /// Operator selection status (0=automatic, 1=manual).
@@ -175,7 +175,7 @@ pub struct HttpModemNetworkOperatorResponse {
 }
 
 /// Battery status information from the modem.
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpModemBatteryLevelResponse {
 
     /// Battery status (0=not charging, 1=charging, 2=no battery).

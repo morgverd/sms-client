@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// WebSocket message types that can be received from the server.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum WebsocketMessage {
 

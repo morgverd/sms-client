@@ -3,7 +3,7 @@
 use serde::{Serialize, Deserialize};
 
 /// Represents a stored SMS message from the database.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SmsStoredMessage {
 
     /// Unique identifier for the message.
@@ -33,7 +33,7 @@ pub struct SmsStoredMessage {
 }
 
 /// A partial message delivery report, as it comes from the modem.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SmsPartialDeliveryReport {
 
     /// The target phone number that received the message (and has now sent back a delivery report).
@@ -48,7 +48,7 @@ pub struct SmsPartialDeliveryReport {
 }
 
 /// Represents the current status of the modem.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum ModemStatusUpdateState {
 
     /// Modem is starting up.
@@ -75,7 +75,7 @@ impl std::fmt::Display for ModemStatusUpdateState {
 }
 
 /// GNSS (Global Navigation Satellite System) fix status.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum GnssFixStatus {
 
     /// GNSS fix status is unknown.
@@ -92,7 +92,7 @@ pub enum GnssFixStatus {
 }
 
 /// Represents a GNSS position report with optional fields for satellite info.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct GnssPositionReport {
 
     /// Indicates whether the GNSS receiver is currently running.
