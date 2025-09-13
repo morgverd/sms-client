@@ -120,8 +120,8 @@ impl HttpClient {
             "phone_number": phone_number.into()
         });
 
-        let url = self.base_url.join("/db/friendly-names/set")?;
-        let response = self.setup_request(false, self.client.get(url))
+        let url = self.base_url.join("/db/friendly-names/get")?;
+        let response = self.setup_request(false, self.client.post(url))
             .json(&body)
             .send()
             .await?;
