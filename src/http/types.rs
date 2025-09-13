@@ -11,15 +11,18 @@ use serde::{Serialize, Deserialize};
 pub struct HttpPaginationOptions {
 
     /// The maximum amount of return values.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u64>,
 
     /// The offset in index to start getting values from.
     /// Eg, if the limit was 5, and you want to view page 2,
     /// the offset would be 5, then 10, 15, ...
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<u64>,
 
     /// Should return values be reversed? This is useful for getting the
     /// first results from a large set without having to know it's size.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reverse: Option<bool>
 }
 impl HttpPaginationOptions {
@@ -70,11 +73,13 @@ pub struct HttpOutgoingSmsMessage {
     /// The relative validity period to use for message sending. This determines
     /// how long the message should remain waiting while undelivered.
     /// By default, this is determined by the server (24 hours).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub validity_period: Option<u8>,
 
     /// Should the SMS message be sent as a Silent class? This makes a popup
     /// show on the users device with the message content if they're logged in.
-    pub flash: bool
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flash: Option<bool>
 }
 impl HttpOutgoingSmsMessage {
 
@@ -94,7 +99,7 @@ impl HttpOutgoingSmsMessage {
     /// Set the message flash state. This will show a popup if the recipient is
     /// logged-in to their phone, otherwise as a normal text message.
     pub fn with_flash(mut self, flash: bool) -> Self {
-        self.flash = flash;
+        self.flash = Some(flash);
         self
     }
 
