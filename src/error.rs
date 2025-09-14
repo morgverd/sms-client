@@ -4,12 +4,12 @@
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     /// HTTP client error
-    #[error("HTTP client error: {0}")]
+    #[error("{0}")]
     HttpError(#[from] crate::http::error::HttpError),
 
     /// WebSocket client error
     #[cfg(feature = "websocket")]
-    #[error("WebSocket client error: {0}")]
+    #[error("{0}")]
     WebsocketError(#[from] crate::ws::error::WebsocketError),
 
     /// Missing some configuration value

@@ -17,7 +17,7 @@ pub enum HttpError {
     JsonError(#[from] serde_json::Error),
 
     /// HTTP request returned a non-success status code.
-    #[error("HTTP {status}: {message}")]
+    #[error("{}", HttpError::format_http_error(.status, &.message))]
     HttpStatus {
         /// HTTP status returned in response.
         status: u16,
@@ -51,6 +51,32 @@ pub enum HttpError {
         expected: String,
         /// The actual response data-type.
         actual: String
+    }
+}
+impl HttpError {
+    fn status_text(status: u16) -> &'static str {
+        match status {
+            200 => "OK",
+            400 => "Bad Request",
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            405 => "Method Not Allowed",
+            408 => "Not Acceptable",
+            429 => "Too Many Requests",
+            500 => "Internal Server Error",
+            503 => "Service Unavailable",
+            504 => "Gateway Timeout",
+            _ => "Unknown"
+        }
+    }
+
+    fn format_http_error(status: &u16, message: &str) -> String {
+        if message.trim().is_empty() {
+            format!("HTTP {status} {}", Self::status_text(*status))
+        } else {
+            format!("HTTP {status}: {}", message)
+        }
     }
 }
 
