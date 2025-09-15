@@ -8,7 +8,7 @@ default = []
 websocket = ["dep:futures-util", "dep:tokio-tungstenite", "dep:tungstenite", "dep:http"]
 
 [dependencies]
-reqwest = { version = "0.12.23", features = ["json"] }
+reqwest = { version = "0.12.23", default-features = false, features = ["json", "rustls-tls"] }
 thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["full"] }
 log = "0.4.28"
