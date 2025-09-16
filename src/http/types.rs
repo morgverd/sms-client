@@ -79,7 +79,12 @@ pub struct HttpOutgoingSmsMessage {
     /// Should the SMS message be sent as a Silent class? This makes a popup
     /// show on the users device with the message content if they're logged in.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub flash: Option<bool>
+    pub flash: Option<bool>,
+
+    /// A timeout that should be applied to the entire request.
+    /// If one is not set, the default timeout is used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u32>
 }
 impl HttpOutgoingSmsMessage {
 
@@ -106,6 +111,12 @@ impl HttpOutgoingSmsMessage {
     /// Set a relative validity period value.
     pub fn with_validity_period(mut self, period: u8) -> Self {
         self.validity_period = Some(period);
+        self
+    }
+
+    /// Set a request timeout value.
+    pub fn with_timeout(mut self, timeout: u32) -> Self {
+        self.timeout = Some(timeout);
         self
     }
 }
@@ -200,6 +211,80 @@ impl From<(HttpOutgoingSmsMessage, HttpSmsSendResponse)> for crate::types::SmsSt
             status: "Unknown".to_string(),
             created_at: None,
             completed_at: None
+        }
+    }
+}
+
+/// The raw DeviceInfoResponse with raw values.
+#[derive(Deserialize, PartialEq, Debug, Clone)]
+pub struct HttpSmsDeviceInfoResponse {
+
+    /// The phone number associated with the SMS device
+    pub phone_number: Option<String>,
+
+    /// The name of the cellular service provider
+    pub service_provider: Option<String>,
+
+    /// Network operator information as (code1, code2, operator_name)
+    pub network_operator: Option<(u8, u8, String)>,
+
+    /// Current network connection status as (status_code, strength_indicator)
+    pub network_status: Option<(u8, u8)>,
+
+    /// Battery information as (level_percentage, charging_status, voltage)
+    pub battery: Option<(u8, u8, f32)>,
+
+    /// Signal strength information as (strength_level, quality_indicator)
+    pub signal: Option<(u8, u8)>
+}
+
+/// Formatted device info response, with each value packed into a proper optional response.
+#[derive(Deserialize, PartialEq, Debug, Clone)]
+pub struct HttpSmsDeviceInfoData {
+
+    /// The phone number associated with the SMS device
+    pub phone_number: Option<String>,
+
+    /// The name of the cellular service provider
+    pub service_provider: Option<String>,
+
+    /// Detailed network operator information and capabilities
+    pub network_operator: Option<HttpModemNetworkOperatorResponse>,
+
+    /// Current network connection status and diagnostics
+    pub network_status: Option<HttpModemNetworkStatusResponse>,
+
+    /// Battery level, charging state, and power metrics
+    pub battery: Option<HttpModemBatteryLevelResponse>,
+
+    /// Signal strength measurements and quality indicators
+    pub signal: Option<HttpModemSignalStrengthResponse>
+}
+impl From<HttpSmsDeviceInfoResponse> for HttpSmsDeviceInfoData {
+    fn from(value: HttpSmsDeviceInfoResponse) -> HttpSmsDeviceInfoData {
+        HttpSmsDeviceInfoData {
+            phone_number: value.phone_number,
+            service_provider: value.service_provider,
+            network_operator: value.network_operator.map(|v|
+                HttpModemNetworkOperatorResponse {
+                    status: v.0, format: v.1, operator: v.2
+                }
+            ),
+            network_status: value.network_status.map(|v|
+                HttpModemNetworkStatusResponse {
+                    registration: v.0, technology: v.1
+                }
+            ),
+            battery: value.battery.map(|v|
+                HttpModemBatteryLevelResponse {
+                    status: v.0, charge: v.1, voltage: v.2
+                }
+            ),
+            signal: value.signal.map(|v|
+                HttpModemSignalStrengthResponse {
+                    rssi: v.0, ber: v.1
+                }
+            ),
         }
     }
 }

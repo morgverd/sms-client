@@ -184,10 +184,18 @@ impl HttpClient {
 
     /// Send an SMS message to a target phone_number. The result will contain the
     /// message reference (provided from modem) and message id (used internally).
+    /// This will use the message timeout for the request if one is set.
     pub async fn send_sms(&self, message: &HttpOutgoingSmsMessage) -> HttpResult<HttpSmsSendResponse> {
         let url = self.base_url.join("/sms/send")?;
-        let response = self.setup_request(true, self.client.post(url))
-            .json(message)
+
+        // Create request, applying request timeout if one is set (+ 5).
+        // The timeout is enforced by the server, so the additional buffer is to allow for slow networking.
+        let mut request = self.setup_request(true, self.client.post(url));
+        if let Some(timeout) = message.timeout {
+            request = request.timeout(std::time::Duration::from_secs(timeout as u64 + 5));
+        }
+
+        let response = request.json(message)
             .send()
             .await?;
 
@@ -219,6 +227,17 @@ impl HttpClient {
     /// Get the Modem Hat's battery level, which is used for GNSS warm starts.
     pub async fn get_battery_level(&self) -> HttpResult<HttpModemBatteryLevelResponse> {
         self.modem_request("battery-level", "BatteryLevel").await
+    }
+
+    /// Get device info summary result. This is a more efficient way to request all device info.
+    pub async fn get_device_info(&self) -> HttpResult<HttpSmsDeviceInfoData> {
+        let url = self.base_url.join("/sms/device-info")?;
+        let response = self.setup_request(false, self.client.get(url))
+            .send()
+            .await?;
+
+        let response = read_http_response::<HttpSmsDeviceInfoResponse>(response).await?;
+        Ok(HttpSmsDeviceInfoData::from(response))
     }
 
     /// Get the configured sender SMS number. This should be used primarily for client identification.
