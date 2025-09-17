@@ -232,7 +232,7 @@ impl HttpClient {
     /// Get device info summary result. This is a more efficient way to request all device info.
     pub async fn get_device_info(&self) -> HttpResult<HttpSmsDeviceInfoData> {
         let url = self.base_url.join("/sms/device-info")?;
-        let response = self.setup_request(false, self.client.get(url))
+        let response = self.setup_request(true, self.client.get(url))
             .send()
             .await?;
 

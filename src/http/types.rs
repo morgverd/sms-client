@@ -219,6 +219,9 @@ impl From<(HttpOutgoingSmsMessage, HttpSmsSendResponse)> for crate::types::SmsSt
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct HttpSmsDeviceInfoResponse {
 
+    /// SMS API version string, including features.
+    pub version: String,
+
     /// The phone number associated with the SMS device
     pub phone_number: Option<String>,
 
@@ -242,6 +245,9 @@ pub struct HttpSmsDeviceInfoResponse {
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct HttpSmsDeviceInfoData {
 
+    /// SMS API version string, including features.
+    pub version: String,
+
     /// The phone number associated with the SMS device
     pub phone_number: Option<String>,
 
@@ -263,6 +269,7 @@ pub struct HttpSmsDeviceInfoData {
 impl From<HttpSmsDeviceInfoResponse> for HttpSmsDeviceInfoData {
     fn from(value: HttpSmsDeviceInfoResponse) -> HttpSmsDeviceInfoData {
         HttpSmsDeviceInfoData {
+            version: value.version,
             phone_number: value.phone_number,
             service_provider: value.service_provider,
             network_operator: value.network_operator.map(|v|
