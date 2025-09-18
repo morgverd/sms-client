@@ -1,8 +1,7 @@
 //! SMS-Client connection configuration.
 
-use std::time::Duration;
-
 /// HTTP-specific configuration.
+#[cfg(feature = "http")]
 #[derive(Clone, Debug)]
 pub struct HttpConfig {
 
@@ -15,13 +14,14 @@ pub struct HttpConfig {
     /// A default timeout to apply to all requests that do not have
     /// their own timeout (this applies to all if modem_timeout is None,
     /// otherwise only database and sys queries).
-    pub base_timeout: Duration,
+    pub base_timeout: std::time::Duration,
 
     /// An optional timeout to use specifically for modem requests
     /// (requests that must send and receive modem data). This should
     /// be higher than the default timeout as they can take longer.
-    pub modem_timeout: Option<Duration>,
+    pub modem_timeout: Option<std::time::Duration>,
 }
+#[cfg(feature = "http")]
 impl HttpConfig {
 
     /// The default amount of seconds before an HTTP request should time out.
@@ -37,8 +37,8 @@ impl HttpConfig {
         Self {
             url: url.into(),
             authorization: None,
-            base_timeout: Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
-            modem_timeout: Some(Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
+            base_timeout: std::time::Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
+            modem_timeout: Some(std::time::Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
         }
     }
 
@@ -49,24 +49,25 @@ impl HttpConfig {
     }
 
     /// Set the base request timeout.
-    pub fn with_base_timeout(mut self, timeout: Duration) -> Self {
+    pub fn with_base_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.base_timeout = timeout;
         self
     }
 
     /// Set the modem request timeout.
-    pub fn with_modem_timeout(mut self, timeout: Option<Duration>) -> Self {
+    pub fn with_modem_timeout(mut self, timeout: Option<std::time::Duration>) -> Self {
         self.modem_timeout = timeout;
         self
     }
 }
+#[cfg(feature = "http")]
 impl Default for HttpConfig {
     fn default() -> Self {
         Self {
             url: "http://localhost:3000".to_string(),
             authorization: None,
-            base_timeout: Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
-            modem_timeout: Some(Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
+            base_timeout: std::time::Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
+            modem_timeout: Some(std::time::Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
         }
     }
 }
@@ -86,13 +87,13 @@ pub struct WebsocketConfig {
     pub auto_reconnect: bool,
 
     /// Interval to use between reconnection attempts.
-    pub reconnect_interval: Duration,
+    pub reconnect_interval: std::time::Duration,
 
     /// The interval between sending websocket pings.
-    pub ping_interval: Duration,
+    pub ping_interval: std::time::Duration,
 
     /// Timeout duration for missing pings.
-    pub ping_timeout: Duration,
+    pub ping_timeout: std::time::Duration,
 
     /// Maximum reconnection attempts (None = unlimited).
     pub max_reconnect_attempts: Option<u32>,
@@ -100,7 +101,7 @@ pub struct WebsocketConfig {
     /// Optional set of events that should be listened to. This is added to
     /// the websocket connection URI, and the server filters out events before
     /// sending them. By default, all events are sent when none are selected.
-    pub filtered_events: Option<Vec<String>>,
+    pub filtered_events: Option<Vec<String>>
 }
 #[cfg(feature = "websocket")]
 impl WebsocketConfig {
@@ -121,9 +122,9 @@ impl WebsocketConfig {
             url: url.into(),
             authorization: None,
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(Self::WS_DEFAULT_RECONNECT_INTERVAL),
-            ping_interval: Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
-            ping_timeout: Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
+            reconnect_interval: std::time::Duration::from_secs(Self::WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
             filtered_events: None
         }
@@ -142,19 +143,19 @@ impl WebsocketConfig {
     }
 
     /// Set the reconnection interval.
-    pub fn with_reconnect_interval(mut self, interval: Duration) -> Self {
+    pub fn with_reconnect_interval(mut self, interval: std::time::Duration) -> Self {
         self.reconnect_interval = interval;
         self
     }
 
     /// Set the ping interval.
-    pub fn with_ping_interval(mut self, interval: Duration) -> Self {
+    pub fn with_ping_interval(mut self, interval: std::time::Duration) -> Self {
         self.ping_interval = interval;
         self
     }
 
     /// Set the ping timeout.
-    pub fn with_ping_timeout(mut self, timeout: Duration) -> Self {
+    pub fn with_ping_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.ping_timeout = timeout;
         self
     }
@@ -180,9 +181,9 @@ impl Default for WebsocketConfig {
             url: "ws://localhost:3000/ws".to_string(),
             authorization: None,
             auto_reconnect: true,
-            reconnect_interval: Duration::from_secs(Self::WS_DEFAULT_RECONNECT_INTERVAL),
-            ping_interval: Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
-            ping_timeout: Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
+            reconnect_interval: std::time::Duration::from_secs(Self::WS_DEFAULT_RECONNECT_INTERVAL),
+            ping_interval: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
+            ping_timeout: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
             filtered_events: None
         }
@@ -194,7 +195,8 @@ impl Default for WebsocketConfig {
 pub struct ClientConfig {
 
     /// HTTP configuration.
-    pub http: HttpConfig,
+    #[cfg(feature = "http")]
+    pub http: Option<HttpConfig>,
 
     /// Optional WebSocket configuration.
     #[cfg(feature = "websocket")]
@@ -210,12 +212,31 @@ impl ClientConfig {
     ///
     /// let config = ClientConfig::http_only("http://192.168.1.2:3000");
     /// ```
+    #[cfg(feature = "http")]
     pub fn http_only(url: impl Into<String>) -> Self {
         Self {
-            http: HttpConfig::new(url),
+            http: Some(HttpConfig::new(url)),
 
             #[cfg(feature = "websocket")]
             websocket: None
+        }
+    }
+
+    /// Create a new configuration with only WebSocket support.
+    ///
+    /// # Example
+    /// ```
+    /// use sms_client::config::ClientConfig;
+    ///
+    /// let config = ClientConfig::websocket_only("ws://192.168.1.2:3000/ws");
+    /// ```
+    #[cfg(feature = "websocket")]
+    pub fn websocket_only(ws_url: impl Into<String>) -> Self {
+        Self {
+            #[cfg(feature = "http")]
+            http: None,
+
+            websocket: Some(WebsocketConfig::new(ws_url))
         }
     }
 
@@ -225,15 +246,16 @@ impl ClientConfig {
     /// ```
     /// use sms_client::config::ClientConfig;
     ///
-    /// let config = ClientConfig::with_websocket(
+    /// let config = ClientConfig::both(
     ///     "http://192.168.1.2:3000",
     ///     "ws://192.168.1.2:3000/ws"
     /// );
     /// ```
+    #[cfg(feature = "http")]
     #[cfg(feature = "websocket")]
-    pub fn with_websocket(http_url: impl Into<String>, ws_url: impl Into<String>) -> Self {
+    pub fn both(http_url: impl Into<String>, ws_url: impl Into<String>) -> Self {
         Self {
-            http: HttpConfig::new(http_url),
+            http: Some(HttpConfig::new(http_url)),
             websocket: Some(WebsocketConfig::new(ws_url))
         }
     }
@@ -254,10 +276,11 @@ impl ClientConfig {
     ///     .with_auto_reconnect(true)
     ///     .with_max_reconnect_attempts(Some(10));
     ///
-    /// let config = ClientConfig::from_parts(http, Some(ws));
+    /// let config = ClientConfig::from_parts(Some(http), Some(ws));
     /// ```
+    #[cfg(feature = "http")]
     #[cfg(feature = "websocket")]
-    pub fn from_parts(http: HttpConfig, websocket: Option<WebsocketConfig>) -> Self {
+    pub fn from_parts(http: Option<HttpConfig>, websocket: Option<WebsocketConfig>) -> Self {
         Self { http, websocket }
     }
 
@@ -267,14 +290,18 @@ impl ClientConfig {
     /// ```
     /// use sms_client::config::ClientConfig;
     ///
-    /// let config = ClientConfig::with_websocket(
+    /// let config = ClientConfig::both(
     ///     "http://192.168.1.2:3000",
     ///     "ws://192.168.1.2:3000/ws"
     /// ).with_auth("my-token");
     /// ```
     pub fn with_auth(mut self, token: impl Into<String>) -> Self {
         let token = token.into();
-        self.http.authorization = Some(token.clone());
+
+        #[cfg(feature = "http")]
+        if let Some(http) = &mut self.http {
+            http.authorization = Some(token.clone());
+        }
 
         #[cfg(feature = "websocket")]
         if let Some(ws) = &mut self.websocket {
@@ -283,7 +310,7 @@ impl ClientConfig {
         self
     }
 
-    /// Configure the HTTP component.
+    /// Configure the HTTP component if present.
     ///
     /// # Example
     /// ```
@@ -296,11 +323,14 @@ impl ClientConfig {
     ///             .with_auth("token")
     ///     });
     /// ```
+    #[cfg(feature = "http")]
     pub fn configure_http<F>(mut self, f: F) -> Self
     where
         F: FnOnce(HttpConfig) -> HttpConfig,
     {
-        self.http = f(self.http);
+        if let Some(http) = self.http {
+            self.http = Some(f(http));
+        }
         self
     }
 
@@ -311,7 +341,7 @@ impl ClientConfig {
     /// use sms_client::config::ClientConfig;
     /// use std::time::Duration;
     ///
-    /// let config = ClientConfig::with_websocket(
+    /// let config = ClientConfig::both(
     ///     "http://192.168.1.2:3000",
     ///     "ws://192.168.1.2:3000/ws"
     /// ).configure_websocket(|ws| {
@@ -355,15 +385,26 @@ impl ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
-            http: HttpConfig::default(),
+
+            #[cfg(feature = "http")]
+            http: Some(HttpConfig::default()),
 
             #[cfg(feature = "websocket")]
             websocket: Some(WebsocketConfig::default()),
         }
     }
 }
+
+#[cfg(feature = "http")]
 impl From<HttpConfig> for ClientConfig {
     fn from(http: HttpConfig) -> Self {
-        ClientConfig { http, ..Default::default() }
+        ClientConfig { http: Some(http), ..Default::default() }
+    }
+}
+
+#[cfg(feature = "websocket")]
+impl From<WebsocketConfig> for ClientConfig {
+    fn from(ws: WebsocketConfig) -> Self {
+        ClientConfig { websocket: Some(ws), ..Default::default() }
     }
 }

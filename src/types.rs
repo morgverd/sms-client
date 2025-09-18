@@ -43,11 +43,11 @@ pub struct SmsPartialDeliveryReport {
     /// the message_id is unique should always be used instead for identification.
     reference_id: u8,
 
-    /// The SMS TP-Status: https://www.etsi.org/deliver/etsi_ts/123000_123099/123040/16.00.00_60/ts_123040v160000p.pdf#page=71
+    /// The SMS TP-Status: <https://www.etsi.org/deliver/etsi_ts/123000_123099/123040/16.00.00_60/ts_123040v160000p.pdf#page=71>
     status: u8
 }
 
-/// https://www.etsi.org/deliver/etsi_ts/123000_123099/123040/16.00.00_60/ts_123040v160000p.pdf#page=71
+/// <https://www.etsi.org/deliver/etsi_ts/123000_123099/123040/16.00.00_60/ts_123040v160000p.pdf#page=71>
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum SmsDeliveryReportStatus {

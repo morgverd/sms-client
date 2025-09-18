@@ -1,5 +1,5 @@
 //! A client library for SMS-API, via HTTP and an optional websocket connection.
-//! https://github.com/morgverd/sms-api
+//! <https://github.com/morgverd/sms-api>
 
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
@@ -7,10 +7,12 @@
 
 use crate::error::*;
 
-pub mod http;
 pub mod config;
 pub mod error;
 pub mod types;
+
+#[cfg(feature = "http")]
+pub mod http;
 
 #[cfg(feature = "websocket")]
 pub mod ws;
@@ -18,7 +20,9 @@ pub mod ws;
 /// SMS Client with HTTP and optional WebSocket support.
 #[derive(Clone, Debug)]
 pub struct Client {
-    http: std::sync::Arc<http::HttpClient>,
+
+    #[cfg(feature = "http")]
+    http: Option<std::sync::Arc<http::HttpClient>>,
 
     #[cfg(feature = "websocket")]
     ws_client: std::sync::Arc<tokio::sync::RwLock<Option<ws::WebsocketClient>>>,
@@ -30,9 +34,10 @@ impl Client {
 
     /// Create an SMS client with a connection config.
     pub fn new(config: config::ClientConfig) -> ClientResult<Self> {
-        let http = http::HttpClient::new(config.http)?;
         Ok(Self {
-            http: std::sync::Arc::new(http),
+
+            #[cfg(feature = "http")]
+            http: config.http.map(|config| http::HttpClient::new(config).map(std::sync::Arc::new)).transpose()?,
 
             #[cfg(feature = "websocket")]
             ws_client: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
@@ -42,18 +47,49 @@ impl Client {
         })
     }
 
-    /// Borrow the inner HTTP client.
-    pub fn http(&self) -> &http::HttpClient {
-        &self.http
+    /// Borrow the optional inner HTTP client.
+    #[cfg(feature = "http")]
+    pub fn http(&self) -> ClientResult<&http::HttpClient> {
+        match &self.http {
+            Some(http) => Ok(http),
+            None => Err(ClientError::MissingConfiguration("HttpClient"))
+        }
     }
 
-    /// Get a cloned Arc to the HTTP client for use in async contexts.
-    pub fn http_arc(&self) -> std::sync::Arc<http::HttpClient> {
-        std::sync::Arc::clone(&self.http)
+    /// Get a cloned Arc to the optional HTTP client for use in async contexts.
+    #[cfg(feature = "http")]
+    pub fn http_arc(&self) -> ClientResult<std::sync::Arc<http::HttpClient>> {
+        match &self.http {
+            Some(http) => Ok(http.clone()),
+            None => Err(ClientError::MissingConfiguration("HttpClient"))
+        }
     }
 
-    /// Set the callback for incoming WebSocket messages.
+    /// Set the callback for incoming WebSocket messages. The callback will include the WebSocket
+    /// message and an Arc to the current Client allowing for easy use within the callback!
     /// This must be called before starting the WebSocket connection.
+    ///
+    /// # Example
+    /// ```
+    /// use sms_client::http::types::HttpOutgoingSmsMessage;
+    /// use sms_client::ws::types::WebsocketMessage;
+    /// use sms_client::Client;
+    /// use log::info;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client: Client = unimplemented!("See other examples");
+    ///
+    ///     client.on_message(move |message, client| {
+    ///         match message {
+    ///             WebsocketMessage::IncomingMessage(sms) => {
+    ///                 // Can access client.http() here!
+    ///             },
+    ///             _ => { }
+    ///         }
+    ///     }).await?
+    /// }
+    /// ```
     #[cfg(feature = "websocket")]
     pub async fn on_message<F>(&self, callback: F) -> ClientResult<()>
     where
@@ -71,6 +107,25 @@ impl Client {
 
     /// Set the callback for incoming WebSocket messages (simple version without client copy).
     /// This must be called before starting the WebSocket connection.
+    ///
+    /// # Example
+    /// ```
+    /// use sms_client::Client;
+    /// use sms_client::ws::types::WebsocketMessage;
+    /// use log::info;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client: Client = unimplemented!("See other examples");
+    ///
+    ///     client.on_message_simple(move |message| {
+    ///         match message {
+    ///             WebsocketMessage::OutgoingMessage(sms) => info!("Outgoing message: {:?}", sms),
+    ///             _ => { }
+    ///         }
+    ///     }).await?
+    /// }
+    /// ```
     #[cfg(feature = "websocket")]
     pub async fn on_message_simple<F>(&self, callback: F) -> ClientResult<()>
     where

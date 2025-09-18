@@ -4,6 +4,7 @@
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     /// HTTP client error
+    #[cfg(feature = "http")]
     #[error("{0}")]
     HttpError(#[from] crate::http::error::HttpError),
 
