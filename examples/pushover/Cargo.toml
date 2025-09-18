@@ -1,0 +1,11 @@
+[package]
+name = "pushover-sms"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sms-client = { path = "../../../sms-client", default-features = false, features = ["websocket"] }
+pushover-rs = { version = "0.3.22", default-features = false, features = ["rustls-tls"] }
+env_logger = "0.11.8"
+log = "0.4.28"
+tokio = "1.47.1"
