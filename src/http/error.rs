@@ -5,7 +5,7 @@
 pub enum HttpError {
 
     /// Network request failed (connection issues, timeouts, etc.)
-    #[error("Network request failed: {0}")]
+    #[error("Reqwest failure: {0}")]
     RequestError(#[from] reqwest::Error),
 
     /// Failed to parse the provided URL.
@@ -15,6 +15,10 @@ pub enum HttpError {
     /// Failed to parse JSON response from the API.
     #[error("JSON parsing failed: {0}")]
     JsonError(#[from] serde_json::Error),
+
+    /// System IO error
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
 
     /// HTTP request returned a non-success status code.
     #[error("{}", HttpError::format_http_error(.status, &.message))]

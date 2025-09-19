@@ -74,6 +74,44 @@ where
         .map_err(HttpError::JsonError)
 }
 
+/// Create a reqwest client with optional TLS configuration.
+fn client_builder(config: &Option<crate::config::TLSConfig>) -> HttpResult<reqwest::ClientBuilder> {
+    let mut builder = reqwest::Client::builder();
+    let Some(certificate_filepath) = config.as_ref().map(|c| c.certificate.clone()) else {
+        return Ok(builder);
+    };
+
+    #[cfg(feature = "http-tls-rustls")]
+    {
+        builder = builder.use_rustls_tls();
+    }
+    #[cfg(feature = "http-tls-native")]
+    {
+        builder = builder.use_native_tls();
+    }
+
+    let certificate_data = std::fs::read(&certificate_filepath).map_err(HttpError::IOError)?;
+    let certificate = match certificate_filepath.extension().and_then(|s| s.to_str()) {
+        Some("pem") => reqwest::Certificate::from_pem(&certificate_data)?,
+        Some("der") => reqwest::Certificate::from_der(&certificate_data)?,
+        Some("crt") => {
+            // .crt files can be either PEM or DER, so we need to detect the format
+            if certificate_data.starts_with(b"-----BEGIN") {
+                reqwest::Certificate::from_pem(&certificate_data)?
+            } else {
+                reqwest::Certificate::from_der(&certificate_data)?
+            }
+        },
+        _ => {
+            // Try PEM first, fallback to DER
+            reqwest::Certificate::from_pem(&certificate_data)
+                .or_else(|_| reqwest::Certificate::from_der(&certificate_data))?
+        }
+    };
+
+    Ok(builder.add_root_certificate(certificate))
+}
+
 /// SMS-API HTTP interface client.
 #[derive(Debug)]
 pub struct HttpClient {
@@ -85,8 +123,8 @@ pub struct HttpClient {
 impl HttpClient {
 
     /// Create a new HTTP client that uses the base_url.
-    pub fn new(config: crate::config::HttpConfig) -> HttpResult<Self> {
-        let client = reqwest::Client::builder()
+    pub fn new(config: crate::config::HttpConfig, tls: &Option<crate::config::TLSConfig>) -> HttpResult<Self> {
+        let client = client_builder(tls)?
             .timeout(config.base_timeout)
             .build()?;
 

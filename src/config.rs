@@ -75,7 +75,7 @@ impl Default for HttpConfig {
 /// WebSocket-specific configuration.
 #[cfg(feature = "websocket")]
 #[derive(Clone, Debug)]
-pub struct WebsocketConfig {
+pub struct WebSocketConfig {
 
     /// Websocket event channel URL. eg: ws://192.168.1.2:3000/ws
     pub url: String,
@@ -104,7 +104,7 @@ pub struct WebsocketConfig {
     pub filtered_events: Option<Vec<String>>
 }
 #[cfg(feature = "websocket")]
-impl WebsocketConfig {
+impl WebSocketConfig {
 
     /// The default interval to use between connection attempts.
     /// Sequential attempts use a backoff up to 60 seconds.
@@ -175,7 +175,7 @@ impl WebsocketConfig {
     }
 }
 #[cfg(feature = "websocket")]
-impl Default for WebsocketConfig {
+impl Default for WebSocketConfig {
     fn default() -> Self {
         Self {
             url: "ws://localhost:3000/ws".to_string(),
@@ -190,9 +190,47 @@ impl Default for WebsocketConfig {
     }
 }
 
+/// WebSocket and HTTP TLS configuration.
+#[derive(Clone, Debug)]
+pub struct TLSConfig {
+
+    /// TLS certificate filepath.
+    pub certificate: std::path::PathBuf
+}
+impl TLSConfig {
+
+    /// Set a certificate filepath to use for TLS connections.
+    pub fn new(certificate: impl Into<std::path::PathBuf>) -> crate::error::ClientResult<Self> {
+        Ok(Self {
+            certificate: Self::verify_path(certificate.into())?
+        })
+    }
+
+    /// Verify certificate filepath, that it's a valid filepath and it has an appropriate extension.
+    fn verify_path(path: std::path::PathBuf) -> crate::error::ClientResult<std::path::PathBuf> {
+        if !path.exists() {
+            return Err(crate::error::ClientError::ConfigError("Certificate filepath does not exist"));
+        }
+        if !path.is_file() {
+            return Err(crate::error::ClientError::ConfigError("Certificate filepath is not a file"));
+        }
+        let canonical_path = path.canonicalize()
+            .map_err(|_| { crate::error::ClientError::ConfigError("Invalid certificate path") })?;
+
+        // Check file extension.
+        match path.extension().and_then(|s| s.to_str()) {
+            Some("pem") | Some("crt") | Some("der") => Ok(canonical_path),
+            _ => Err(crate::error::ClientError::ConfigError("Invalid certificate file extension")),
+        }
+    }
+}
+
 /// Complete client configuration.
 #[derive(Clone, Debug)]
 pub struct ClientConfig {
+
+    /// TLS configuration, used for both HTTP and WebSocket connections.
+    pub tls: Option<TLSConfig>,
 
     /// HTTP configuration.
     #[cfg(feature = "http")]
@@ -200,7 +238,7 @@ pub struct ClientConfig {
 
     /// Optional WebSocket configuration.
     #[cfg(feature = "websocket")]
-    pub websocket: Option<WebsocketConfig>
+    pub websocket: Option<WebSocketConfig>
 }
 impl ClientConfig {
 
@@ -215,6 +253,7 @@ impl ClientConfig {
     #[cfg(feature = "http")]
     pub fn http_only(url: impl Into<String>) -> Self {
         Self {
+            tls: None,
             http: Some(HttpConfig::new(url)),
 
             #[cfg(feature = "websocket")]
@@ -233,10 +272,12 @@ impl ClientConfig {
     #[cfg(feature = "websocket")]
     pub fn websocket_only(ws_url: impl Into<String>) -> Self {
         Self {
+            tls: None,
+
             #[cfg(feature = "http")]
             http: None,
 
-            websocket: Some(WebsocketConfig::new(ws_url))
+            websocket: Some(WebSocketConfig::new(ws_url))
         }
     }
 
@@ -255,8 +296,9 @@ impl ClientConfig {
     #[cfg(feature = "websocket")]
     pub fn both(http_url: impl Into<String>, ws_url: impl Into<String>) -> Self {
         Self {
+            tls: None,
             http: Some(HttpConfig::new(http_url)),
-            websocket: Some(WebsocketConfig::new(ws_url))
+            websocket: Some(WebSocketConfig::new(ws_url))
         }
     }
 
@@ -265,13 +307,13 @@ impl ClientConfig {
     /// # Example
     /// ```
     /// use std::time::Duration;
-    /// use sms_client::config::{ClientConfig, HttpConfig, WebsocketConfig};
+    /// use sms_client::config::{ClientConfig, HttpConfig, WebSocketConfig};
     ///
     /// let http = HttpConfig::new("http://192.168.1.2:3000")
     ///     .with_auth("token123")
     ///     .with_base_timeout(Duration::from_secs(30));
     ///
-    /// let ws = WebsocketConfig::new("ws://192.168.1.2:3000/ws")
+    /// let ws = WebSocketConfig::new("ws://192.168.1.2:3000/ws")
     ///     .with_auth("token123")
     ///     .with_auto_reconnect(true)
     ///     .with_max_reconnect_attempts(Some(10));
@@ -280,14 +322,21 @@ impl ClientConfig {
     /// ```
     #[cfg(feature = "http")]
     #[cfg(feature = "websocket")]
-    pub fn from_parts(http: Option<HttpConfig>, websocket: Option<WebsocketConfig>) -> Self {
-        Self { http, websocket }
+    pub fn from_parts(http: Option<HttpConfig>, websocket: Option<WebSocketConfig>) -> Self {
+        Self { tls: None, http, websocket }
+    }
+
+    /// Add TLS configuration.
+    pub fn add_tls(mut self, tls: TLSConfig) -> Self {
+        self.tls = Some(tls);
+        self
     }
 
     /// Set authorization for both HTTP and WebSocket.
+    /// This only sets the authorization value for components that already exist.
     ///
     /// # Example
-    /// ```
+    /// ```rust
     /// use sms_client::config::ClientConfig;
     ///
     /// let config = ClientConfig::both(
@@ -308,6 +357,23 @@ impl ClientConfig {
             ws.authorization = Some(token);
         }
         self
+    }
+
+    /// Modify/Set a TLSConfig with certificate filepath.
+    ///
+    /// # Example
+    /// ```rust
+    /// use sms_client::config::ClientConfig;
+    ///
+    /// let config = ClientConfig::http_only("https://192.168.1.2:3000")
+    ///     .with_certificate("./certificate.crt")?;
+    pub fn with_certificate(mut self, certificate: impl Into<std::path::PathBuf>) -> crate::error::ClientResult<Self> {
+        if let Some(tls) = &mut self.tls {
+            tls.certificate = TLSConfig::verify_path(certificate.into())?;
+        } else {
+            self.tls = Some(TLSConfig::new(certificate)?);
+        }
+        Ok(self)
     }
 
     /// Configure the HTTP component if present.
@@ -352,7 +418,7 @@ impl ClientConfig {
     #[cfg(feature = "websocket")]
     pub fn configure_websocket<F>(mut self, f: F) -> Self
     where
-        F: FnOnce(WebsocketConfig) -> WebsocketConfig,
+        F: FnOnce(WebSocketConfig) -> WebSocketConfig,
     {
         if let Some(ws) = self.websocket {
             self.websocket = Some(f(ws));
@@ -360,37 +426,31 @@ impl ClientConfig {
         self
     }
 
-    /// Add WebSocket support to an HTTP-only configuration.
+    /// Add WebSocket configuration.
     ///
     /// # Example
     /// ```
-    /// use sms_client::config::{ClientConfig, WebsocketConfig};
+    /// use sms_client::config::{ClientConfig, WebSocketConfig};
     ///
     /// let config = ClientConfig::http_only("http://192.168.1.2:3000")
-    ///     .add_websocket(WebsocketConfig::new("ws://192.168.1.2:3000/ws"));
+    ///     .add_websocket(WebSocketConfig::new("ws://192.168.1.2:3000/ws"));
     /// ```
     #[cfg(feature = "websocket")]
-    pub fn add_websocket(mut self, websocket: WebsocketConfig) -> Self {
+    pub fn add_websocket(mut self, websocket: WebSocketConfig) -> Self {
         self.websocket = Some(websocket);
-        self
-    }
-
-    /// Remove WebSocket support from the configuration.
-    #[cfg(feature = "websocket")]
-    pub fn without_websocket(mut self) -> Self {
-        self.websocket = None;
         self
     }
 }
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            tls: None,
 
             #[cfg(feature = "http")]
             http: Some(HttpConfig::default()),
 
             #[cfg(feature = "websocket")]
-            websocket: Some(WebsocketConfig::default()),
+            websocket: Some(WebSocketConfig::default())
         }
     }
 }
@@ -398,13 +458,13 @@ impl Default for ClientConfig {
 #[cfg(feature = "http")]
 impl From<HttpConfig> for ClientConfig {
     fn from(http: HttpConfig) -> Self {
-        ClientConfig { http: Some(http), ..Default::default() }
+        ClientConfig { tls: None, http: Some(http), ..Default::default() }
     }
 }
 
 #[cfg(feature = "websocket")]
-impl From<WebsocketConfig> for ClientConfig {
-    fn from(ws: WebsocketConfig) -> Self {
-        ClientConfig { websocket: Some(ws), ..Default::default() }
+impl From<WebSocketConfig> for ClientConfig {
+    fn from(ws: WebSocketConfig) -> Self {
+        ClientConfig { tls: None, websocket: Some(ws), ..Default::default() }
     }
 }

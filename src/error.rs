@@ -13,9 +13,9 @@ pub enum ClientError {
     #[error("{0}")]
     WebsocketError(#[from] crate::ws::error::WebsocketError),
 
-    /// Missing some configuration value
-    #[error("Missing required configuration: {0}")]
-    MissingConfiguration(&'static str),
+    /// Missing/invalid configuration value
+    #[error("Missing/invalid required configuration: {0}")]
+    ConfigError(&'static str),
 
     /// No WebSocket client initialized
     #[cfg(feature = "websocket")]

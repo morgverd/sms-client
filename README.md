@@ -14,25 +14,34 @@ Here's some other usage examples from inside a project `Cargo.toml`.
 ```toml
 [dependencies]
 
-# This includes ONLY the HttpClient.
-sms-client = "1.4.1"
+# Includes ONLY the HttpClient.
+sms-client = "1.5.1"
 
-# This includes BOTH the HttpClient and WebSocketClient.
-sms-client = { version = "1.4.1", features = ["websocket"] }
+# Includes BOTH the HttpClient and WebSocketClient.
+sms-client = { version = "1.5.1", features = ["websocket"] }
 
-# This includes ONLY the WebSocketClient.
-sms-client = { version = "1.4.1", default-features = false, features = ["websocket"] }
+# Includes ONLY the WebSocketClient.
+sms-client = { version = "1.5.1", default-features = false, features = ["websocket"] }
+
+# Includes BOTH, with Rust-TLS.
+sms-client = { version = "1.5.1", features = ["http-tls-rustls", "websocket-tls-rustls"] }
+
+# Includes BOTH, with native TLS.
+sms-client = { version = "1.5.1", features = ["http-tls-native", "websocket-tls-native"] }
 ```
 
 ## Compilation Features
 
+> When enabling a TLS feature (eg: `websocket-tls-native`) the base feature (`websocket`) is also enabled.
 
-| Feature Name | Description                                         | Default |
-|--------------|-----------------------------------------------------|---------|
-| http         | Enables HttpClient to send commands to API .        | Yes     |
-| websocket    | Enables WebSocketClient to receive events from API. | No      |
-| http-rustls  | Uses Rust-TLS for reqwest HTTP client.              | Yes     |
-| http-default | Uses default TLS for reqwest HTTP client.           | No      |
+| Feature Name         | Description                                         | Default |
+|----------------------|-----------------------------------------------------|---------|
+| http                 | Enables HttpClient to send commands to API.         | Yes     |
+| websocket            | Enables WebSocketClient to receive events from API. | No      |
+| http-tls-rustls      | Uses Rust-TLS for reqwest HTTP client.              | Yes     |
+| http-tls-native      | Uses default TLS for reqwest HTTP client.           | No      |
+| websocket-tls-rustls | Uses Rust-TLS for WebSocket client.                 | No      |
+| websocket-tls-native | Uses default TLS for WebSocket client.              | No      |
 
 ## Example Projects
 
@@ -57,11 +66,20 @@ use sms_client::Client;
 #[tokio::main]
 async fn main() -> ClientResult<()> { 
     let config = ClientConfig::both(
-        "http://localhost:3000", // HTTP base uri 
-        "ws://localhost:3000/ws" // WebSocket base uri
+        "https://localhost:3000", // HTTP base uri 
+        "wss://localhost:3000/ws" // WebSocket base uri
     )
-        .configure_websocket(|ws| ws.with_auto_reconnect(false)) // Created WebSocket and HTTP config can be modified during build.
-        .with_auth("test!"); // Sets Authorization header for both WebSocket and HTTP connections.
+
+        // Created WebSocket and HTTP config can be modified during build.
+        .configure_websocket(|ws| ws.with_auto_reconnect(false))
+        
+        // Add TLS configuration with a certificate to use for all connections.
+        .add_tls(
+            TLSConfig::new("./certificate.crt")?
+        )
+
+        // Sets Authorization header for all connections.
+        .with_auth("test!");
 
     // Create main SMS client, and set WebSocket message callback.
     let client = Client::new(config)?;
@@ -89,7 +107,10 @@ fn send_reply(client: Arc<Client>, message: SmsStoredMessage) {
     };
 
     // Create a reply message with the sender as recipient and same message content.
-    let reply = HttpOutgoingSmsMessage::simple_message(message.phone_number, message.message_content);
+    let reply = HttpOutgoingSmsMessage::simple_message(
+        message.phone_number,
+        message.message_content
+    );
     tokio::spawn(async move { 
         // Ignore result, in reality this should certainly be handled.
         let _ = http.send_sms(&reply).await;

@@ -25,25 +25,32 @@ pub struct Client {
     http: Option<std::sync::Arc<http::HttpClient>>,
 
     #[cfg(feature = "websocket")]
-    ws_client: std::sync::Arc<tokio::sync::RwLock<Option<ws::WebsocketClient>>>,
+    ws_client: std::sync::Arc<tokio::sync::RwLock<Option<ws::WebSocketClient>>>,
 
     #[cfg(feature = "websocket")]
-    ws_config: Option<config::WebsocketConfig>
+    ws_config: (Option<config::WebSocketConfig>, Option<config::TLSConfig>)
 }
 impl Client {
 
     /// Create an SMS client with a connection config.
     pub fn new(config: config::ClientConfig) -> ClientResult<Self> {
+        let tls = config.tls;
+
+        #[cfg(feature = "websocket-tls-rustls")]
+        let _ = rustls::crypto::CryptoProvider::install_default(
+            rustls::crypto::aws_lc_rs::default_provider()
+        );
+
         Ok(Self {
 
             #[cfg(feature = "http")]
-            http: config.http.map(|config| http::HttpClient::new(config).map(std::sync::Arc::new)).transpose()?,
+            http: config.http.map(|config| http::HttpClient::new(config, &tls).map(std::sync::Arc::new)).transpose()?,
 
             #[cfg(feature = "websocket")]
             ws_client: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
 
             #[cfg(feature = "websocket")]
-            ws_config: config.websocket
+            ws_config: (config.websocket, tls)
         })
     }
 
@@ -52,7 +59,7 @@ impl Client {
     pub fn http(&self) -> ClientResult<&http::HttpClient> {
         match &self.http {
             Some(http) => Ok(http),
-            None => Err(ClientError::MissingConfiguration("HttpClient"))
+            None => Err(ClientError::ConfigError("HttpClient"))
         }
     }
 
@@ -61,7 +68,7 @@ impl Client {
     pub fn http_arc(&self) -> ClientResult<std::sync::Arc<http::HttpClient>> {
         match &self.http {
             Some(http) => Ok(http.clone()),
-            None => Err(ClientError::MissingConfiguration("HttpClient"))
+            None => Err(ClientError::ConfigError("HttpClient"))
         }
     }
 
@@ -197,15 +204,15 @@ impl Client {
 
     /// Create or return existing websocket client guard.
     #[cfg(feature = "websocket")]
-    async fn create_or_get_ws_client(&self) -> ClientResult<tokio::sync::RwLockWriteGuard<'_, Option<ws::WebsocketClient>>> {
+    async fn create_or_get_ws_client(&self) -> ClientResult<tokio::sync::RwLockWriteGuard<'_, Option<ws::WebSocketClient>>> {
         let mut ws_guard = self.ws_client.write().await;
         if ws_guard.is_none() {
-            let config = match self.ws_config.clone() {
-                Some(config) => config,
-                None => return Err(ClientError::MissingConfiguration("WebsocketConfig"))
+            let (ws_config, tls_config) = match self.ws_config.clone() {
+                (Some(config), tls) => (config, tls),
+                _ => return Err(ClientError::ConfigError("WebsocketConfig"))
             };
 
-            let ws_client = ws::WebsocketClient::new(config);
+            let ws_client = ws::WebSocketClient::new(ws_config, tls_config);
             *ws_guard = Some(ws_client);
         }
 

@@ -28,6 +28,10 @@ pub enum WebsocketError {
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
 
+    /// TLS configuration error
+    #[error("TLS error: {0}")]
+    TLSError(String),
+
     /// Http Unauthorized (401), token is missing or invalid
     #[error("The WebSocket connection was unauthorized")]
     Unauthorized,
