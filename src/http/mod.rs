@@ -76,40 +76,63 @@ where
 
 /// Create a reqwest client with optional TLS configuration.
 fn client_builder(config: &Option<crate::config::TLSConfig>) -> HttpResult<reqwest::ClientBuilder> {
-    let mut builder = reqwest::Client::builder();
-    let Some(certificate_filepath) = config.as_ref().map(|c| c.certificate.clone()) else {
+    let builder = reqwest::Client::builder();
+    let Some(tls_config) = config.as_ref() else {
         return Ok(builder);
     };
 
-    #[cfg(feature = "http-tls-rustls")]
+    #[cfg(not(any(feature = "http-tls-rustls", feature = "http-tls-native")))]
     {
-        builder = builder.use_rustls_tls();
-    }
-    #[cfg(feature = "http-tls-native")]
-    {
-        builder = builder.use_native_tls();
+        let _ = tls_config; // Suppress unused variable warning
+        return Err(HttpError::TLSError(
+            "TLS configuration provided but no TLS features enabled. Enable either 'http-tls-rustls' or 'http-tls-native' feature".to_string()
+        ));
     }
 
-    let certificate_data = std::fs::read(&certificate_filepath).map_err(HttpError::IOError)?;
-    let certificate = match certificate_filepath.extension().and_then(|s| s.to_str()) {
-        Some("pem") => reqwest::Certificate::from_pem(&certificate_data)?,
-        Some("der") => reqwest::Certificate::from_der(&certificate_data)?,
-        Some("crt") => {
-            // .crt files can be either PEM or DER, so we need to detect the format
-            if certificate_data.starts_with(b"-----BEGIN") {
-                reqwest::Certificate::from_pem(&certificate_data)?
-            } else {
-                reqwest::Certificate::from_der(&certificate_data)?
+    #[cfg(any(feature = "http-tls-rustls", feature = "http-tls-native"))]
+    {
+        let mut builder = builder;
+
+        // Configure TLS backend
+        #[cfg(feature = "http-tls-rustls")]
+        { builder = builder.use_rustls_tls(); }
+
+        #[cfg(feature = "http-tls-native")]
+        { builder = builder.use_native_tls(); }
+
+        // Load and add certificate
+        let certificate = load_certificate(&tls_config.certificate)?;
+        builder = builder.add_root_certificate(certificate);
+
+        return Ok(builder);
+    }
+}
+
+/// Load a certificate filepath, returning the certificate set for builder.
+#[cfg(any(feature = "http-tls-rustls", feature = "http-tls-native"))]
+fn load_certificate(cert_path: &std::path::Path) -> HttpResult<reqwest::tls::Certificate> {
+    let cert_data = std::fs::read(cert_path).map_err(HttpError::IOError)?;
+
+    // Try to parse based on file extension first
+    if let Some(ext) = cert_path.extension().and_then(|s| s.to_str()) {
+        match ext {
+            "pem" => return Ok(reqwest::tls::Certificate::from_pem(&cert_data)?),
+            "der" => return Ok(reqwest::tls::Certificate::from_der(&cert_data)?),
+            "crt" => {
+                if cert_data.starts_with(b"-----BEGIN") {
+                    return Ok(reqwest::tls::Certificate::from_pem(&cert_data)?);
+                } else {
+                    return Ok(reqwest::tls::Certificate::from_der(&cert_data)?);
+                }
             }
-        },
-        _ => {
-            // Try PEM first, fallback to DER
-            reqwest::Certificate::from_pem(&certificate_data)
-                .or_else(|_| reqwest::Certificate::from_der(&certificate_data))?
+            _ => {} // Fall through to auto-detection
         }
-    };
+    }
 
-    Ok(builder.add_root_certificate(certificate))
+    // Auto-detect format: try PEM first, then DER
+    reqwest::tls::Certificate::from_pem(&cert_data)
+        .or_else(|_| reqwest::tls::Certificate::from_der(&cert_data))
+        .map_err(Into::into)
 }
 
 /// SMS-API HTTP interface client.

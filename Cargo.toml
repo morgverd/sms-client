@@ -1,7 +1,7 @@
 [package]
 name = "sms-client"
 description = "A HTTP and WebSocket interface for SMS-API, allowing for SMS messages to be sent and recieved via a local GSM modem!"
-version = "1.5.1"
+version = "1.5.2"
 edition = "2024"
 license = "AGPL-3.0-only"
 keywords = ["sms", "gsm", "http-client", "websocket-client"]

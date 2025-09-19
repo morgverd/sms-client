@@ -36,6 +36,10 @@ pub enum HttpError {
         message: String
     },
 
+    /// TLS configuration error
+    #[error("TLS error: {0}")]
+    TLSError(String),
+
     /// API response missing the expected 'response' field.
     #[error("Missing 'response' field in API response")]
     MissingResponseField,
