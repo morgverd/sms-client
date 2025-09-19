@@ -5,7 +5,7 @@ use pushover_rs::{send_pushover_request, MessageBuilder};
 use sms_client::Client;
 use sms_client::types::SmsStoredMessage;
 use sms_client::ws::types::WebsocketMessage;
-use sms_client::config::{ClientConfig, WebsocketConfig};
+use sms_client::config::{ClientConfig, WebSocketConfig};
 use sms_client::error::ClientError;
 
 #[derive(Clone)]
@@ -18,6 +18,7 @@ struct PushoverConfig {
 struct AppConfig {
     websocket_url: String,
     websocket_auth: Option<String>,
+    websocket_cert: Option<String>,
     pushover: PushoverConfig
 }
 impl AppConfig {
@@ -25,6 +26,7 @@ impl AppConfig {
         AppConfig {
             websocket_url: var("SMS_PUSHOVER_WS_URL").expect("SMS_PUSHOVER_WS_URL not set"),
             websocket_auth: var("SMS_PUSHOVER_WS_AUTH").ok(),
+            websocket_cert: var("SMS_PUSHOVER_WS_CERT").ok(),
             pushover: PushoverConfig {
                 users: var("SMS_PUSHOVER_USERS")
                     .expect("SMS_PUSHOVER_USERS not set")
@@ -41,15 +43,20 @@ impl Into<ClientConfig> for AppConfig {
     fn into(self) -> ClientConfig {
 
         // Filter for only incoming messages.
-        let mut config = WebsocketConfig::new(&self.websocket_url)
+        let mut ws_config = WebSocketConfig::new(&self.websocket_url)
             .with_filtered_events(Some(vec!["incoming"]));
 
         // Apply optional authorization.
         if let Some(auth) = &self.websocket_auth {
-            config = config.with_auth(auth);
+            ws_config = ws_config.with_auth(auth);
         }
 
-        config.into()
+        // Apply optional TLS certificate.
+        let client_config: ClientConfig = ws_config.into();
+        match &self.websocket_cert {
+            Some(filepath) => client_config.with_certificate(filepath).expect("Failed to set certificate on ClientConfig!"),
+            None => client_config
+        }
     }
 }
 
