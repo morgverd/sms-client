@@ -15,19 +15,19 @@ Here's some other usage examples from inside a project `Cargo.toml`.
 [dependencies]
 
 # Includes ONLY the HttpClient.
-sms-client = "1.5.1"
+sms-client = "1.5.3"
 
 # Includes BOTH the HttpClient and WebSocketClient.
-sms-client = { version = "1.5.1", features = ["websocket"] }
+sms-client = { version = "1.5.3", features = ["websocket"] }
 
 # Includes ONLY the WebSocketClient.
-sms-client = { version = "1.5.1", default-features = false, features = ["websocket"] }
+sms-client = { version = "1.5.3", default-features = false, features = ["websocket"] }
 
 # Includes BOTH, with Rust-TLS.
-sms-client = { version = "1.5.1", features = ["http-tls-rustls", "websocket-tls-rustls"] }
+sms-client = { version = "1.5.3", features = ["http-tls-rustls", "websocket-tls-rustls"] }
 
 # Includes BOTH, with native TLS.
-sms-client = { version = "1.5.1", features = ["http-tls-native", "websocket-tls-native"] }
+sms-client = { version = "1.5.3", features = ["http-tls-native", "websocket-tls-native"] }
 ```
 
 ## Compilation Features
@@ -46,8 +46,8 @@ sms-client = { version = "1.5.1", features = ["http-tls-native", "websocket-tls-
 ## Example Projects
 
 Here are two example projects that use this crate:
- - [Pushover](/examples/pushover) - Send Pushover notifications for Incoming messages.
- - [SMS-Terminal](https://github.com/morgverd/sms-terminal) - Send and receive SMS messages via a TUI application.
+- [Pushover](/examples/pushover) - Send Pushover notifications for Incoming messages.
+- [SMS-Terminal](https://github.com/morgverd/sms-terminal) - Send and receive SMS messages via a TUI application.
 
 ## Example Code
 
@@ -64,7 +64,7 @@ use sms_client::error::ClientResult;
 use sms_client::Client;
 
 #[tokio::main]
-async fn main() -> ClientResult<()> { 
+async fn main() -> ClientResult<()> {
     let config = ClientConfig::both(
         "https://localhost:3000", // HTTP base uri 
         "wss://localhost:3000/ws" // WebSocket base uri
@@ -72,7 +72,7 @@ async fn main() -> ClientResult<()> {
 
         // Created WebSocket and HTTP config can be modified during build.
         .configure_websocket(|ws| ws.with_auto_reconnect(false))
-        
+
         // Add TLS configuration with a certificate to use for all connections.
         .add_tls(
             TLSConfig::new("./certificate.crt")?
@@ -84,12 +84,12 @@ async fn main() -> ClientResult<()> {
     // Create main SMS client, and set WebSocket message callback.
     let client = Client::new(config)?;
     client.on_message(move |message, client| {
-
-     // Match WebSocket message to check if it's an IncomingMessage.
-     match message {
-         WebsocketMessage::IncomingMessage(sms) => send_reply(client, sms),
-         _ => { }
-     }
+        
+        // Match WebSocket message to check if it's an IncomingMessage.
+        match message {
+            WebsocketMessage::IncomingMessage(sms) => send_reply(client, sms),
+            _ => { }
+        }
     }).await?;
 
     // Start the websocket loop as blocking. This means the app will halt here
@@ -99,10 +99,10 @@ async fn main() -> ClientResult<()> {
 }
 
 fn send_reply(client: Arc<Client>, message: SmsStoredMessage) {
-    
+
     // The HttpClient is a Result since it may not have been loaded if disabled by config.
     // In this example though, we know the client will be present.
-    let Some(http) = client.http().ok() else { 
+    let Some(http) = client.http().ok() else {
         return None;
     };
 
@@ -111,7 +111,7 @@ fn send_reply(client: Arc<Client>, message: SmsStoredMessage) {
         message.phone_number,
         message.message_content
     );
-    tokio::spawn(async move { 
+    tokio::spawn(async move {
         // Ignore result, in reality this should certainly be handled.
         let _ = http.send_sms(&reply).await;
     });

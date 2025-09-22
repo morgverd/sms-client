@@ -34,6 +34,9 @@ pub fn create_connector(
 
         #[cfg(feature = "websocket-tls-rustls")]
         {
+            let _ = rustls::crypto::CryptoProvider::install_default(
+                rustls::crypto::aws_lc_rs::default_provider()
+            );
             let certificate = parse_certificate_rustls(&certificate_data, cert_ext)?;
             create_rustls_connector(certificate)
         }
