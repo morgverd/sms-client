@@ -4,10 +4,10 @@ pub mod error;
 pub mod types;
 
 mod client;
+mod connection;
 mod tls;
 mod worker;
-mod connection;
 
 pub use client::WebSocketClient;
 pub use error::{WebsocketError, WebsocketResult};
-pub use types::{WebsocketMessage, MessageCallback};
+pub use types::{MessageCallback, WebsocketMessage};

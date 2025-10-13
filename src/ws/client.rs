@@ -11,7 +11,7 @@ pub struct WebSocketClient {
     callback: Option<MessageCallback>,
     control_tx: Option<tokio::sync::mpsc::UnboundedSender<ControlMessage>>,
     worker_handle: Option<tokio::task::JoinHandle<WebsocketResult<()>>>,
-    is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>
+    is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>,
 }
 impl WebSocketClient {
     /// Create a new WebSocket client.
@@ -25,7 +25,7 @@ impl WebSocketClient {
             callback: None,
             control_tx: None,
             worker_handle: None,
-            is_connected: std::sync::Arc::new(tokio::sync::RwLock::new(false))
+            is_connected: std::sync::Arc::new(tokio::sync::RwLock::new(false)),
         }
     }
 
@@ -53,9 +53,7 @@ impl WebSocketClient {
             std::sync::Arc::clone(&self.is_connected),
         );
 
-        let worker_handle = tokio::spawn(async move {
-            worker_loop.run(control_rx).await
-        });
+        let worker_handle = tokio::spawn(async move { worker_loop.run(control_rx).await });
 
         self.worker_handle = Some(worker_handle);
         Ok(())

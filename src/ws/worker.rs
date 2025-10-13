@@ -1,9 +1,9 @@
 //! WebSocket worker loop and message handling.
 
-use futures_util::{SinkExt, StreamExt};
 use crate::ws::connection::ConnectionParams;
 use crate::ws::error::*;
 use crate::ws::types::*;
+use futures_util::{SinkExt, StreamExt};
 
 /// Control messages for the worker loop
 pub enum ControlMessage {
@@ -22,7 +22,7 @@ pub struct WorkerLoop {
     config: crate::config::WebSocketConfig,
     tls_config: Option<crate::config::TLSConfig>,
     callback: Option<MessageCallback>,
-    is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>
+    is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>,
 }
 impl WorkerLoop {
     /// Create a new worker loop
@@ -30,7 +30,7 @@ impl WorkerLoop {
         config: crate::config::WebSocketConfig,
         tls_config: Option<crate::config::TLSConfig>,
         callback: Option<MessageCallback>,
-        is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>
+        is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>,
     ) -> Self {
         Self {
             config,
@@ -48,11 +48,15 @@ impl WorkerLoop {
         let mut reconnect_count = 0u32;
 
         // Create connection parameters
-        let connection_params = ConnectionParams::from_config(&self.config, &self.tls_config)?;
+        let connection_params =
+            ConnectionParams::from_config(&self.config, self.tls_config.as_ref())?;
 
         loop {
             // Try to establish connection and handle messages
-            match self.handle_connection(&connection_params, &mut control_rx).await {
+            match self
+                .handle_connection(&connection_params, &mut control_rx)
+                .await
+            {
                 Ok(should_reconnect) => {
                     // Emit disconnection event
                     let will_reconnect = should_reconnect && self.config.auto_reconnect;
@@ -157,8 +161,10 @@ impl WorkerLoop {
         &self,
         msg: Result<tungstenite::Message, tungstenite::Error>,
         write: &mut futures_util::stream::SplitSink<
-            tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
-            tungstenite::Message
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
+            tungstenite::Message,
         >,
         last_pong_time: &mut tokio::time::Instant,
         waiting_for_pong: &mut bool,
@@ -216,7 +222,10 @@ impl WorkerLoop {
         if waiting_for_pong {
             let time_since_last_pong = tokio::time::Instant::now() - last_pong_time;
             if time_since_last_pong > self.config.ping_timeout {
-                log::trace!("Ping timeout - no pong received for {:?}", time_since_last_pong);
+                log::trace!(
+                    "Ping timeout - no pong received for {:?}",
+                    time_since_last_pong
+                );
                 return Ok(false);
             }
         }
@@ -230,8 +239,10 @@ impl WorkerLoop {
         &self,
         msg: ControlMessage,
         write: &mut futures_util::stream::SplitSink<
-            tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
-            tungstenite::Message
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
+            tungstenite::Message,
         >,
     ) -> WebsocketResult<bool> {
         match msg {
@@ -251,7 +262,10 @@ impl WorkerLoop {
     /// Emit connection status update
     fn emit_connection_update(&self, connected: bool, reconnect: bool) {
         if let Some(cb) = &self.callback {
-            cb(WebsocketMessage::WebsocketConnectionUpdate { connected, reconnect });
+            cb(WebsocketMessage::WebsocketConnectionUpdate {
+                connected,
+                reconnect,
+            });
         }
     }
 }

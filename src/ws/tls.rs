@@ -4,7 +4,7 @@ use crate::ws::error::*;
 
 /// Create TLS connector based on configuration
 pub fn create_connector(
-    tls_config: &Option<crate::config::TLSConfig>,
+    tls_config: Option<&crate::config::TLSConfig>,
 ) -> WebsocketResult<Option<tokio_tungstenite::Connector>> {
     // If no TLS features are enabled, return an error if config is provided.
     #[cfg(not(any(feature = "websocket-tls-rustls", feature = "websocket-tls-native")))]
@@ -24,18 +24,17 @@ pub fn create_connector(
         let Some(tls_config) = tls_config else {
             return Ok(None);
         };
-        let certificate_data = std::fs::read(&tls_config.certificate)
-            .map_err(|e| WebsocketError::TLSError(format!("Failed to read certificate file: {}", e)))?;
+        let certificate_data = std::fs::read(&tls_config.certificate).map_err(|e| {
+            WebsocketError::TLSError(format!("Failed to read certificate file: {}", e))
+        })?;
 
         // Determine certificate format based on file extension and content
-        let cert_ext = tls_config.certificate
-            .extension()
-            .and_then(|s| s.to_str());
+        let cert_ext = tls_config.certificate.extension().and_then(|s| s.to_str());
 
         #[cfg(feature = "websocket-tls-rustls")]
         {
             let _ = rustls::crypto::CryptoProvider::install_default(
-                rustls::crypto::aws_lc_rs::default_provider()
+                rustls::crypto::aws_lc_rs::default_provider(),
             );
             let certificate = parse_certificate_rustls(&certificate_data, cert_ext)?;
             create_rustls_connector(certificate)
@@ -90,8 +89,9 @@ fn create_rustls_connector(
     certificate: rustls_pki_types::CertificateDer<'static>,
 ) -> WebsocketResult<Option<tokio_tungstenite::Connector>> {
     let mut root_store = rustls::RootCertStore::empty();
-    root_store.add(certificate)
-        .map_err(|e| WebsocketError::TLSError(format!("Failed to add certificate to root store: {}", e)))?;
+    root_store.add(certificate).map_err(|e| {
+        WebsocketError::TLSError(format!("Failed to add certificate to root store: {}", e))
+    })?;
 
     let tls_config = rustls::ClientConfig::builder()
         .with_root_certificates(root_store)
@@ -108,25 +108,31 @@ fn parse_certificate_native(
     ext: Option<&str>,
 ) -> WebsocketResult<native_tls::Certificate> {
     match ext {
-        Some("pem") => native_tls::Certificate::from_pem(certificate_data)
-            .map_err(|e| WebsocketError::TLSError(format!("Failed to parse PEM certificate: {}", e))),
-        Some("der") => native_tls::Certificate::from_der(certificate_data)
-            .map_err(|e| WebsocketError::TLSError(format!("Failed to parse DER certificate: {}", e))),
+        Some("pem") => native_tls::Certificate::from_pem(certificate_data).map_err(|e| {
+            WebsocketError::TLSError(format!("Failed to parse PEM certificate: {}", e))
+        }),
+        Some("der") => native_tls::Certificate::from_der(certificate_data).map_err(|e| {
+            WebsocketError::TLSError(format!("Failed to parse DER certificate: {}", e))
+        }),
         Some("crt") => {
             // .crt files can be either PEM or DER
             if certificate_data.starts_with(b"-----BEGIN") {
-                native_tls::Certificate::from_pem(certificate_data)
-                    .map_err(|e| WebsocketError::TLSError(format!("Failed to parse PEM certificate: {}", e)))
+                native_tls::Certificate::from_pem(certificate_data).map_err(|e| {
+                    WebsocketError::TLSError(format!("Failed to parse PEM certificate: {}", e))
+                })
             } else {
-                native_tls::Certificate::from_der(certificate_data)
-                    .map_err(|e| WebsocketError::TLSError(format!("Failed to parse DER certificate: {}", e)))
+                native_tls::Certificate::from_der(certificate_data).map_err(|e| {
+                    WebsocketError::TLSError(format!("Failed to parse DER certificate: {}", e))
+                })
             }
         }
         _ => {
             // Try PEM first, fallback to DER
             native_tls::Certificate::from_pem(certificate_data)
                 .or_else(|_| native_tls::Certificate::from_der(certificate_data))
-                .map_err(|e| WebsocketError::TLSError(format!("Failed to parse certificate: {}", e)))
+                .map_err(|e| {
+                    WebsocketError::TLSError(format!("Failed to parse certificate: {}", e))
+                })
         }
     }
 }
@@ -138,7 +144,8 @@ fn create_native_connector(
     let mut builder = native_tls::TlsConnector::builder();
     builder.add_root_certificate(certificate);
 
-    let tls_connector = builder.build()
+    let tls_connector = builder
+        .build()
         .map_err(|e| WebsocketError::TLSError(format!("Failed to build TLS connector: {}", e)))?;
 
     Ok(Some(tokio_tungstenite::Connector::NativeTls(tls_connector)))

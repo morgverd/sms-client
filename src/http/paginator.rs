@@ -1,9 +1,9 @@
 //! HTTP request paginator, supporting lazy traversal across large sets
 
+use crate::http::error::HttpResult;
 use crate::http::types::HttpPaginationOptions;
-use crate::http::error::*;
 
-/// Call a function with an update HttpPaginationOptions for each batch request,
+/// Call a function with an update `HttpPaginationOptions` for each batch request,
 /// simplifying lazy access to large response sets such as messages etc.
 pub struct HttpPaginator<T, F, Fut> {
     http_fn: F,
@@ -12,14 +12,13 @@ pub struct HttpPaginator<T, F, Fut> {
     current_index: usize,
     has_more: bool,
     initial_limit: u64,
-    _phantom: std::marker::PhantomData<Fut>
+    _phantom: std::marker::PhantomData<Fut>,
 }
 impl<T, F, Fut> HttpPaginator<T, F, Fut>
 where
     F: Fn(Option<HttpPaginationOptions>) -> Fut,
-    Fut: Future<Output = HttpResult<Vec<T>>>
+    Fut: Future<Output = HttpResult<Vec<T>>>,
 {
-
     /// Create the paginator with the http batch generator.
     ///
     /// # Example
@@ -53,7 +52,7 @@ where
             current_index: 0,
             has_more: true,
             initial_limit,
-            _phantom: std::marker::PhantomData
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -83,14 +82,14 @@ where
             http_fn,
             HttpPaginationOptions::default()
                 .with_limit(50)
-                .with_offset(0)
+                .with_offset(0),
         )
     }
 
     /// Fetch the next batch of items from the API.
     async fn fetch_next_batch(&mut self) -> HttpResult<bool> {
         log::trace!("Fetching next batch: {:?}", self.pagination);
-        let response = (self.http_fn)(Some(self.pagination.clone())).await?;
+        let response = (self.http_fn)(Some(self.pagination)).await?;
 
         let received_count = response.len() as u64;
         self.has_more = received_count >= self.initial_limit;
@@ -108,7 +107,6 @@ where
         if let Some(current_offset) = self.pagination.offset {
             self.pagination.offset = Some(current_offset + received_count);
         } else {
-
             // If no offset was set initially, start from the received count
             self.pagination.offset = Some(received_count);
         }
@@ -136,15 +134,14 @@ where
     /// ```
     pub async fn next(&mut self) -> Option<T> {
         if self.current_index >= self.current_batch.len() {
-
             // If there aren't any-more, then there is nothing to fetch next.
             if !self.has_more {
                 return None;
             }
 
             match self.fetch_next_batch().await {
-                Ok(true) => {}, // Successfully fetched more data
-                Ok(false) | Err(_) => return None // No more data or error
+                Ok(true) => {}                     // Successfully fetched more data
+                Ok(false) | Err(_) => return None, // No more data or error
             }
         }
 
@@ -212,7 +209,7 @@ where
     /// ```
     pub async fn for_each_chuck<C>(mut self, chunk_size: usize, mut chunk_fn: C) -> HttpResult<()>
     where
-        C: FnMut(&[T]) -> HttpResult<()>
+        C: FnMut(&[T]) -> HttpResult<()>,
     {
         let mut chunk = Vec::with_capacity(chunk_size);
 

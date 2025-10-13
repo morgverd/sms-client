@@ -4,8 +4,9 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)]
 
-use crate::error::*;
+use crate::error::{ClientError, ClientResult};
 
 pub mod config;
 pub mod error;
@@ -20,33 +21,32 @@ pub mod ws;
 /// SMS Client.
 #[derive(Clone, Debug)]
 pub struct Client {
-
     #[cfg(feature = "http")]
     http_client: Option<std::sync::Arc<http::HttpClient>>,
 
     #[cfg(feature = "websocket")]
-    ws_client: Option<std::sync::Arc<tokio::sync::Mutex<ws::WebSocketClient>>>
+    ws_client: Option<std::sync::Arc<tokio::sync::Mutex<ws::WebSocketClient>>>,
 }
 impl Client {
-
     /// Create an SMS client with a connection config.
     pub fn new(config: config::ClientConfig) -> ClientResult<Self> {
         let tls = config.tls;
 
         #[cfg(feature = "http")]
         let http_client = if let Some(http_config) = config.http {
-            Some(std::sync::Arc::new(
-                http::HttpClient::new(http_config, &tls)?
-            ))
+            Some(std::sync::Arc::new(http::HttpClient::new(
+                http_config,
+                tls.as_ref(),
+            )?))
         } else {
             None
         };
 
         #[cfg(feature = "websocket")]
         let ws_client = config.websocket.map(|ws_config| {
-            std::sync::Arc::new(tokio::sync::Mutex::new(
-                ws::WebSocketClient::new(ws_config, tls)
-            ))
+            std::sync::Arc::new(tokio::sync::Mutex::new(ws::WebSocketClient::new(
+                ws_config, tls,
+            )))
         });
 
         Ok(Self {
@@ -54,7 +54,7 @@ impl Client {
             http_client,
 
             #[cfg(feature = "websocket")]
-            ws_client
+            ws_client,
         })
     }
 
@@ -63,7 +63,7 @@ impl Client {
     pub fn http(&self) -> ClientResult<&http::HttpClient> {
         self.http_client
             .as_ref()
-            .map(|arc| arc.as_ref())
+            .map(std::convert::AsRef::as_ref)
             .ok_or(ClientError::ConfigError("HttpClient"))
     }
 
@@ -105,16 +105,15 @@ impl Client {
     where
         F: Fn(ws::types::WebsocketMessage, std::sync::Arc<Self>) + Send + Sync + 'static,
     {
-        let ws_client = self.ws_client
+        let ws_client = self
+            .ws_client
             .as_ref()
             .ok_or(ClientError::ConfigError("WebSocketClient"))?;
 
         let mut ws_guard = ws_client.lock().await;
         let client_arc = std::sync::Arc::new(self.clone());
 
-        ws_guard.on_message(move |msg| {
-            callback(msg, std::sync::Arc::clone(&client_arc))
-        });
+        ws_guard.on_message(move |msg| callback(msg, std::sync::Arc::clone(&client_arc)));
 
         Ok(())
     }
@@ -145,7 +144,8 @@ impl Client {
     where
         F: Fn(ws::types::WebsocketMessage) + Send + Sync + 'static,
     {
-        let ws_client = self.ws_client
+        let ws_client = self
+            .ws_client
             .as_ref()
             .ok_or(ClientError::ConfigError("WebSocketClient"))?;
 
@@ -158,7 +158,8 @@ impl Client {
     /// Start the WebSocket connection.
     #[cfg(feature = "websocket")]
     pub async fn start_background_websocket(&self) -> ClientResult<()> {
-        let ws_client = self.ws_client
+        let ws_client = self
+            .ws_client
             .as_ref()
             .ok_or(ClientError::ConfigError("WebsocketConfig"))?;
 
@@ -171,7 +172,8 @@ impl Client {
     /// Start the WebSocket connection and block until closed.
     #[cfg(feature = "websocket")]
     pub async fn start_blocking_websocket(&self) -> ClientResult<()> {
-        let ws_client = self.ws_client
+        let ws_client = self
+            .ws_client
             .as_ref()
             .ok_or(ClientError::ConfigError("WebsocketConfig"))?;
 
@@ -184,7 +186,8 @@ impl Client {
     /// Stop the WebSocket connection.
     #[cfg(feature = "websocket")]
     pub async fn stop_background_websocket(&self) -> ClientResult<()> {
-        let ws_client = self.ws_client
+        let ws_client = self
+            .ws_client
             .as_ref()
             .ok_or(ClientError::ConfigError("WebsocketConfig"))?;
 
@@ -208,7 +211,8 @@ impl Client {
     /// Force a WebSocket reconnection.
     #[cfg(feature = "websocket")]
     pub async fn reconnect_websocket(&self) -> ClientResult<()> {
-        let ws_client = self.ws_client
+        let ws_client = self
+            .ws_client
             .as_ref()
             .ok_or(ClientError::NoWebsocketClient)?;
 

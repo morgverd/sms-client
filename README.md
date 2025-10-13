@@ -15,19 +15,19 @@ Here's some other usage examples from inside a project `Cargo.toml`.
 [dependencies]
 
 # Includes ONLY the HttpClient.
-sms-client = "1.5.4"
+sms-client = "1.5.5"
 
 # Includes BOTH the HttpClient and WebSocketClient.
-sms-client = { version = "1.5.4", features = ["websocket"] }
+sms-client = { version = "1.5.5", features = ["websocket"] }
 
 # Includes ONLY the WebSocketClient.
-sms-client = { version = "1.5.4", default-features = false, features = ["websocket"] }
+sms-client = { version = "1.5.5", default-features = false, features = ["websocket"] }
 
 # Includes BOTH, with Rust-TLS.
-sms-client = { version = "1.5.4", features = ["http-tls-rustls", "websocket-tls-rustls"] }
+sms-client = { version = "1.5.5", features = ["http-tls-rustls", "websocket-tls-rustls"] }
 
 # Includes BOTH, with native TLS.
-sms-client = { version = "1.5.4", features = ["http-tls-native", "websocket-tls-native"] }
+sms-client = { version = "1.5.5", features = ["http-tls-native", "websocket-tls-native"] }
 ```
 
 ## Compilation Features
@@ -46,8 +46,8 @@ sms-client = { version = "1.5.4", features = ["http-tls-native", "websocket-tls-
 ## Example Projects
 
 Here are two example projects that use this crate:
-- [Pushover](/examples/pushover) - Send Pushover notifications for Incoming messages.
-- [SMS-Terminal](https://github.com/morgverd/sms-terminal) - Send and receive SMS messages via a TUI application.
+- [Pushover](/examples/pushover) - Send Pushover notifications for Incoming messages
+- [sms-terminal](https://github.com/morgverd/sms-terminal) ([crates.io](https://crates.io/crates/sms-terminal)) - Send and receive SMS messages via a TUI application
 
 ## Example Code
 

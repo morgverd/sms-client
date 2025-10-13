@@ -20,7 +20,7 @@ pub enum ClientError {
     /// No WebSocket client initialized
     #[cfg(feature = "websocket")]
     #[error("No WebSocket client initialized")]
-    NoWebsocketClient
+    NoWebsocketClient,
 }
 
 /// Result type alias for Websocket operations.

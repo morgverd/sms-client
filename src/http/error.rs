@@ -1,9 +1,8 @@
 //! HTTP interface related errors.
 
-/// An error originating from the SMS HttpClient.
+/// An error originating from the SMS `HttpClient`.
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
-
     /// Network request failed (connection issues, timeouts, etc.)
     #[error("Reqwest failure: {0}")]
     RequestError(#[from] reqwest::Error),
@@ -21,19 +20,19 @@ pub enum HttpError {
     IOError(#[from] std::io::Error),
 
     /// HTTP request returned a non-success status code.
-    #[error("{}", HttpError::format_http_error(.status, &.message))]
+    #[error("{}", HttpError::format_http_error(status, message))]
     HttpStatus {
         /// HTTP status returned in response.
         status: u16,
         /// Full response body as text.
-        message: String
+        message: String,
     },
 
     /// API returned success=false with an error message.
     #[error("API responded with success=false: {message}")]
     ApiError {
-        /// The error_message key from response.
-        message: String
+        /// The `error_message` key from response.
+        message: String,
     },
 
     /// TLS configuration error
@@ -58,8 +57,8 @@ pub enum HttpError {
         /// The expected response data-type.
         expected: String,
         /// The actual response data-type.
-        actual: String
-    }
+        actual: String,
+    },
 }
 impl HttpError {
     fn status_text(status: u16) -> &'static str {
@@ -75,15 +74,17 @@ impl HttpError {
             500 => "Internal Server Error",
             503 => "Service Unavailable",
             504 => "Gateway Timeout",
-            _ => "Unknown"
+            _ => "Unknown",
         }
     }
 
+    // Ignore Clippy hint since thiserror always provides it by reference.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn format_http_error(status: &u16, message: &str) -> String {
         if message.trim().is_empty() {
             format!("HTTP {status} {}", Self::status_text(*status))
         } else {
-            format!("HTTP {status}: {}", message)
+            format!("HTTP {status}: {message}")
         }
     }
 }

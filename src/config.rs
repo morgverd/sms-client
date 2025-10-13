@@ -4,15 +4,14 @@
 #[cfg(feature = "http")]
 #[derive(Clone, Debug)]
 pub struct HttpConfig {
-
-    /// HTTP base URL. eg: http://192.168.1.2:3000
+    /// HTTP base URL. eg: <http://192.168.1.2:3000>
     pub url: String,
 
     /// Optional HTTP authorization header token.
     pub authorization: Option<String>,
 
     /// A default timeout to apply to all requests that do not have
-    /// their own timeout (this applies to all if modem_timeout is None,
+    /// their own timeout (this applies to all if `modem_timeout` is None,
     /// otherwise only database and sys queries).
     pub base_timeout: std::time::Duration,
 
@@ -23,9 +22,8 @@ pub struct HttpConfig {
 }
 #[cfg(feature = "http")]
 impl HttpConfig {
-
     /// The default amount of seconds before an HTTP request should time out.
-    /// If there is no modem_timeout, this is applied to all requests.
+    /// If there is no `modem_timeout`, this is applied to all requests.
     pub const HTTP_DEFAULT_BASE_TIMEOUT: u64 = 5;
 
     /// The default amount of seconds before an HTTP request that interacts directly
@@ -33,28 +31,34 @@ impl HttpConfig {
     pub const HTTP_DEFAULT_MODEM_TIMEOUT: u64 = 20;
 
     /// Create a new HTTP configuration with default settings.
+    #[must_use]
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
             authorization: None,
             base_timeout: std::time::Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
-            modem_timeout: Some(std::time::Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
+            modem_timeout: Some(std::time::Duration::from_secs(
+                Self::HTTP_DEFAULT_MODEM_TIMEOUT,
+            )),
         }
     }
 
     /// Set the authorization token.
+    #[must_use]
     pub fn with_auth(mut self, token: impl Into<String>) -> Self {
         self.authorization = Some(token.into());
         self
     }
 
     /// Set the base request timeout.
+    #[must_use]
     pub fn with_base_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.base_timeout = timeout;
         self
     }
 
     /// Set the modem request timeout.
+    #[must_use]
     pub fn with_modem_timeout(mut self, timeout: Option<std::time::Duration>) -> Self {
         self.modem_timeout = timeout;
         self
@@ -67,7 +71,9 @@ impl Default for HttpConfig {
             url: "http://localhost:3000".to_string(),
             authorization: None,
             base_timeout: std::time::Duration::from_secs(Self::HTTP_DEFAULT_BASE_TIMEOUT),
-            modem_timeout: Some(std::time::Duration::from_secs(Self::HTTP_DEFAULT_MODEM_TIMEOUT))
+            modem_timeout: Some(std::time::Duration::from_secs(
+                Self::HTTP_DEFAULT_MODEM_TIMEOUT,
+            )),
         }
     }
 }
@@ -76,7 +82,6 @@ impl Default for HttpConfig {
 #[cfg(feature = "websocket")]
 #[derive(Clone, Debug)]
 pub struct WebSocketConfig {
-
     /// Websocket event channel URL. eg: ws://192.168.1.2:3000/ws
     pub url: String,
 
@@ -101,11 +106,10 @@ pub struct WebSocketConfig {
     /// Optional set of events that should be listened to. This is added to
     /// the websocket connection URI, and the server filters out events before
     /// sending them. By default, all events are sent when none are selected.
-    pub filtered_events: Option<Vec<String>>
+    pub filtered_events: Option<Vec<String>>,
 }
 #[cfg(feature = "websocket")]
 impl WebSocketConfig {
-
     /// The default interval to use between connection attempts.
     /// Sequential attempts use a backoff up to 60 seconds.
     pub const WS_DEFAULT_RECONNECT_INTERVAL: u64 = 5;
@@ -117,6 +121,7 @@ impl WebSocketConfig {
     pub const WS_DEFAULT_PING_TIMEOUT: u64 = 30;
 
     /// Create a new WebSocket configuration with default settings.
+    #[must_use]
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
@@ -126,41 +131,47 @@ impl WebSocketConfig {
             ping_interval: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
             ping_timeout: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
-            filtered_events: None
+            filtered_events: None,
         }
     }
 
     /// Set the authorization token.
+    #[must_use]
     pub fn with_auth(mut self, token: impl Into<String>) -> Self {
         self.authorization = Some(token.into());
         self
     }
 
     /// Enable or disable auto-reconnection.
+    #[must_use]
     pub fn with_auto_reconnect(mut self, enabled: bool) -> Self {
         self.auto_reconnect = enabled;
         self
     }
 
     /// Set the reconnection interval.
+    #[must_use]
     pub fn with_reconnect_interval(mut self, interval: std::time::Duration) -> Self {
         self.reconnect_interval = interval;
         self
     }
 
     /// Set the ping interval.
+    #[must_use]
     pub fn with_ping_interval(mut self, interval: std::time::Duration) -> Self {
         self.ping_interval = interval;
         self
     }
 
     /// Set the ping timeout.
+    #[must_use]
     pub fn with_ping_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.ping_timeout = timeout;
         self
     }
 
     /// Set maximum reconnection attempts (None = unlimited).
+    #[must_use]
     pub fn with_max_reconnect_attempts(mut self, max_attempts: Option<u32>) -> Self {
         self.max_reconnect_attempts = max_attempts;
         self
@@ -169,6 +180,7 @@ impl WebSocketConfig {
     /// Set filtered listen events, this is included in the connection query-string.
     /// The provided Vec should contain every event name that should be sent by the server.
     /// If None, filtering is disabled so all events are sent.
+    #[must_use]
     pub fn with_filtered_events(mut self, events: Option<Vec<impl Into<String>>>) -> Self {
         self.filtered_events = events.map(|events| events.into_iter().map(Into::into).collect());
         self
@@ -185,7 +197,7 @@ impl Default for WebSocketConfig {
             ping_interval: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_INTERVAL),
             ping_timeout: std::time::Duration::from_secs(Self::WS_DEFAULT_PING_TIMEOUT),
             max_reconnect_attempts: None,
-            filtered_events: None
+            filtered_events: None,
         }
     }
 }
@@ -193,34 +205,39 @@ impl Default for WebSocketConfig {
 /// WebSocket and HTTP TLS configuration.
 #[derive(Clone, Debug)]
 pub struct TLSConfig {
-
     /// TLS certificate filepath.
-    pub certificate: std::path::PathBuf
+    pub certificate: std::path::PathBuf,
 }
 impl TLSConfig {
-
     /// Set a certificate filepath to use for TLS connections.
     pub fn new(certificate: impl Into<std::path::PathBuf>) -> crate::error::ClientResult<Self> {
         Ok(Self {
-            certificate: Self::verify_path(certificate.into())?
+            certificate: Self::verify_path(&certificate.into())?,
         })
     }
 
-    /// Verify certificate filepath, that it's a valid filepath and it has an appropriate extension.
-    fn verify_path(path: std::path::PathBuf) -> crate::error::ClientResult<std::path::PathBuf> {
+    /// Verify certificate filepath. Returning Path it's a valid filepath, and it has an appropriate extension.
+    fn verify_path(path: &std::path::Path) -> crate::error::ClientResult<std::path::PathBuf> {
         if !path.exists() {
-            return Err(crate::error::ClientError::ConfigError("Certificate filepath does not exist"));
+            return Err(crate::error::ClientError::ConfigError(
+                "Certificate filepath does not exist",
+            ));
         }
         if !path.is_file() {
-            return Err(crate::error::ClientError::ConfigError("Certificate filepath is not a file"));
+            return Err(crate::error::ClientError::ConfigError(
+                "Certificate filepath is not a file",
+            ));
         }
-        let canonical_path = path.canonicalize()
-            .map_err(|_| { crate::error::ClientError::ConfigError("Invalid certificate path") })?;
+        let canonical_path = path
+            .canonicalize()
+            .map_err(|_| crate::error::ClientError::ConfigError("Invalid certificate path"))?;
 
         // Check file extension.
         match path.extension().and_then(|s| s.to_str()) {
-            Some("pem") | Some("crt") | Some("der") => Ok(canonical_path),
-            _ => Err(crate::error::ClientError::ConfigError("Invalid certificate file extension")),
+            Some("pem" | "crt" | "der") => Ok(canonical_path),
+            _ => Err(crate::error::ClientError::ConfigError(
+                "Invalid certificate file extension",
+            )),
         }
     }
 }
@@ -228,7 +245,6 @@ impl TLSConfig {
 /// Complete client configuration.
 #[derive(Clone, Debug)]
 pub struct ClientConfig {
-
     /// TLS configuration, used for both HTTP and WebSocket connections.
     pub tls: Option<TLSConfig>,
 
@@ -238,10 +254,9 @@ pub struct ClientConfig {
 
     /// Optional WebSocket configuration.
     #[cfg(feature = "websocket")]
-    pub websocket: Option<WebSocketConfig>
+    pub websocket: Option<WebSocketConfig>,
 }
 impl ClientConfig {
-
     /// Create a new configuration with only HTTP support.
     ///
     /// # Example
@@ -251,13 +266,14 @@ impl ClientConfig {
     /// let config = ClientConfig::http_only("http://192.168.1.2:3000");
     /// ```
     #[cfg(feature = "http")]
+    #[must_use]
     pub fn http_only(url: impl Into<String>) -> Self {
         Self {
             tls: None,
             http: Some(HttpConfig::new(url)),
 
             #[cfg(feature = "websocket")]
-            websocket: None
+            websocket: None,
         }
     }
 
@@ -270,6 +286,7 @@ impl ClientConfig {
     /// let config = ClientConfig::websocket_only("ws://192.168.1.2:3000/ws");
     /// ```
     #[cfg(feature = "websocket")]
+    #[must_use]
     pub fn websocket_only(ws_url: impl Into<String>) -> Self {
         Self {
             tls: None,
@@ -277,7 +294,7 @@ impl ClientConfig {
             #[cfg(feature = "http")]
             http: None,
 
-            websocket: Some(WebSocketConfig::new(ws_url))
+            websocket: Some(WebSocketConfig::new(ws_url)),
         }
     }
 
@@ -294,11 +311,12 @@ impl ClientConfig {
     /// ```
     #[cfg(feature = "http")]
     #[cfg(feature = "websocket")]
+    #[must_use]
     pub fn both(http_url: impl Into<String>, ws_url: impl Into<String>) -> Self {
         Self {
             tls: None,
             http: Some(HttpConfig::new(http_url)),
-            websocket: Some(WebSocketConfig::new(ws_url))
+            websocket: Some(WebSocketConfig::new(ws_url)),
         }
     }
 
@@ -322,11 +340,17 @@ impl ClientConfig {
     /// ```
     #[cfg(feature = "http")]
     #[cfg(feature = "websocket")]
+    #[must_use]
     pub fn from_parts(http: Option<HttpConfig>, websocket: Option<WebSocketConfig>) -> Self {
-        Self { tls: None, http, websocket }
+        Self {
+            tls: None,
+            http,
+            websocket,
+        }
     }
 
     /// Add TLS configuration.
+    #[must_use]
     pub fn add_tls(mut self, tls: TLSConfig) -> Self {
         self.tls = Some(tls);
         self
@@ -344,6 +368,7 @@ impl ClientConfig {
     ///     "ws://192.168.1.2:3000/ws"
     /// ).with_auth("my-token");
     /// ```
+    #[must_use]
     pub fn with_auth(mut self, token: impl Into<String>) -> Self {
         let token = token.into();
 
@@ -359,7 +384,7 @@ impl ClientConfig {
         self
     }
 
-    /// Modify/Set a TLSConfig with certificate filepath.
+    /// Modify/Set a `TLSConfig` with certificate filepath.
     ///
     /// # Example
     /// ```rust
@@ -367,9 +392,12 @@ impl ClientConfig {
     ///
     /// let config = ClientConfig::http_only("https://192.168.1.2:3000")
     ///     .with_certificate("./certificate.crt")?;
-    pub fn with_certificate(mut self, certificate: impl Into<std::path::PathBuf>) -> crate::error::ClientResult<Self> {
+    pub fn with_certificate(
+        mut self,
+        certificate: impl Into<std::path::PathBuf>,
+    ) -> crate::error::ClientResult<Self> {
         if let Some(tls) = &mut self.tls {
-            tls.certificate = TLSConfig::verify_path(certificate.into())?;
+            tls.certificate = TLSConfig::verify_path(&certificate.into())?;
         } else {
             self.tls = Some(TLSConfig::new(certificate)?);
         }
@@ -390,6 +418,7 @@ impl ClientConfig {
     ///     });
     /// ```
     #[cfg(feature = "http")]
+    #[must_use]
     pub fn configure_http<F>(mut self, f: F) -> Self
     where
         F: FnOnce(HttpConfig) -> HttpConfig,
@@ -416,6 +445,7 @@ impl ClientConfig {
     /// });
     /// ```
     #[cfg(feature = "websocket")]
+    #[must_use]
     pub fn configure_websocket<F>(mut self, f: F) -> Self
     where
         F: FnOnce(WebSocketConfig) -> WebSocketConfig,
@@ -436,6 +466,7 @@ impl ClientConfig {
     ///     .add_websocket(WebSocketConfig::new("ws://192.168.1.2:3000/ws"));
     /// ```
     #[cfg(feature = "websocket")]
+    #[must_use]
     pub fn add_websocket(mut self, websocket: WebSocketConfig) -> Self {
         self.websocket = Some(websocket);
         self
@@ -450,7 +481,7 @@ impl Default for ClientConfig {
             http: Some(HttpConfig::default()),
 
             #[cfg(feature = "websocket")]
-            websocket: Some(WebSocketConfig::default())
+            websocket: Some(WebSocketConfig::default()),
         }
     }
 }
@@ -458,13 +489,21 @@ impl Default for ClientConfig {
 #[cfg(feature = "http")]
 impl From<HttpConfig> for ClientConfig {
     fn from(http: HttpConfig) -> Self {
-        ClientConfig { tls: None, http: Some(http), ..Default::default() }
+        ClientConfig {
+            tls: None,
+            http: Some(http),
+            ..Default::default()
+        }
     }
 }
 
 #[cfg(feature = "websocket")]
 impl From<WebSocketConfig> for ClientConfig {
     fn from(ws: WebSocketConfig) -> Self {
-        ClientConfig { tls: None, websocket: Some(ws), ..Default::default() }
+        ClientConfig {
+            tls: None,
+            websocket: Some(ws),
+            ..Default::default()
+        }
     }
 }

@@ -3,7 +3,6 @@
 /// Errors that can occur with WebSocket operations.
 #[derive(thiserror::Error, Debug)]
 pub enum WebsocketError {
-
     /// Invalid configured websocket connection URL, failed to create request
     #[error("Invalid WebSocket request URL configured")]
     InvalidRequest,
@@ -54,20 +53,19 @@ pub enum WebsocketError {
 
     /// Timeout error
     #[error("Operation timed out")]
-    Timeout
+    Timeout,
 }
 
 /// An error generated from URL parsing or generation.
 #[derive(thiserror::Error, Debug)]
 pub enum UrlError {
-
     /// Invalid Uri provided for websocket connection
     #[error(transparent)]
     Http(#[from] http::uri::InvalidUri),
 
     /// Failed to parse connection URL to add event filters
     #[error(transparent)]
-    Url(#[from] url::ParseError)
+    Url(#[from] url::ParseError),
 }
 
 /// Result type alias for WebSocket operations.

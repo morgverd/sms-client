@@ -1,6 +1,6 @@
 //! HTTP interface related request/response types.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// HTTP pagination options allow for lazy reading of large sets of data,
 /// for example if thousands of messages have been sent and received from
@@ -9,7 +9,6 @@ use serde::{Serialize, Deserialize};
 /// This is applied at the server level when requesting data from database.
 #[derive(Serialize, PartialEq, Default, Debug, Clone, Copy)]
 pub struct HttpPaginationOptions {
-
     /// The maximum amount of return values.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u64>,
@@ -23,23 +22,25 @@ pub struct HttpPaginationOptions {
     /// Should return values be reversed? This is useful for getting the
     /// first results from a large set without having to know it's size.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reverse: Option<bool>
+    pub reverse: Option<bool>,
 }
 impl HttpPaginationOptions {
-
     /// Set the limit/page size.
+    #[must_use]
     pub fn with_limit(mut self, limit: u64) -> Self {
         self.limit = Some(limit);
         self
     }
 
     /// Set request position offset.
+    #[must_use]
     pub fn with_offset(mut self, offset: u64) -> Self {
         self.offset = Some(offset);
         self
     }
 
     /// Set the reverse state for options.
+    #[must_use]
     pub fn with_reverse(mut self, reverse: bool) -> Self {
         self.reverse = Some(reverse);
         self
@@ -62,7 +63,6 @@ impl HttpPaginationOptions {
 /// The outgoing SMS message to be sent to a target number.
 #[derive(Serialize, PartialEq, Default, Debug, Clone)]
 pub struct HttpOutgoingSmsMessage {
-
     /// The target phone number, this should be in international format.
     pub to: String,
 
@@ -84,16 +84,12 @@ pub struct HttpOutgoingSmsMessage {
     /// A timeout that should be applied to the entire request.
     /// If one is not set, the default timeout is used.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<u32>
+    pub timeout: Option<u32>,
 }
 impl HttpOutgoingSmsMessage {
-
     /// Create a new outgoing message with a default validity period and no flash.
     /// The default validity period is applied by SMS-API, so usually 24 hours.
-    pub fn simple_message(
-        to: impl Into<String>,
-        content: impl Into<String>
-    ) -> Self {
+    pub fn simple_message(to: impl Into<String>, content: impl Into<String>) -> Self {
         Self {
             to: to.into(),
             content: content.into(),
@@ -103,18 +99,21 @@ impl HttpOutgoingSmsMessage {
 
     /// Set the message flash state. This will show a popup if the recipient is
     /// logged-in to their phone, otherwise as a normal text message.
+    #[must_use]
     pub fn with_flash(mut self, flash: bool) -> Self {
         self.flash = Some(flash);
         self
     }
 
     /// Set a relative validity period value.
+    #[must_use]
     pub fn with_validity_period(mut self, period: u8) -> Self {
         self.validity_period = Some(period);
         self
     }
 
     /// Set a request timeout value.
+    #[must_use]
     pub fn with_timeout(mut self, timeout: u32) -> Self {
         self.timeout = Some(timeout);
         self
@@ -124,18 +123,16 @@ impl HttpOutgoingSmsMessage {
 /// Response returned after sending an SMS message.
 #[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpSmsSendResponse {
-
     /// The unique ID assigned to the already sent message.
     pub message_id: i64,
 
     /// Reference ID for tracking the message.
-    pub reference_id: u8
+    pub reference_id: u8,
 }
 
 /// Delivery report for an already sent SMS message.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpSmsDeliveryReport {
-
     /// Unique identifier for this delivery report.
     pub report_id: Option<i64>,
 
@@ -146,35 +143,32 @@ pub struct HttpSmsDeliveryReport {
     pub is_final: bool,
 
     /// Unix timestamp when this report was created.
-    pub created_at: Option<u32>
+    pub created_at: Option<u32>,
 }
 
 /// Network registration status of the modem.
 #[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpModemNetworkStatusResponse {
-
     /// Registration status code (0=not registered, 1=registered home, 5=registered roaming).
     pub registration: u8,
 
     /// Network technology in use (e.g., 2G, 3G, 4G).
-    pub technology: u8
+    pub technology: u8,
 }
 
 /// Signal strength information from the modem.
 #[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpModemSignalStrengthResponse {
-
     /// Received Signal Strength Indicator (0-31, 99=unknown).
     pub rssi: u8,
 
     /// Bit Error Rate (0-7, 99=unknown).
-    pub ber: u8
+    pub ber: u8,
 }
 
 /// Network operator information from the modem.
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct HttpModemNetworkOperatorResponse {
-
     /// Operator selection status (0=automatic, 1=manual).
     pub status: u8,
 
@@ -182,13 +176,12 @@ pub struct HttpModemNetworkOperatorResponse {
     pub format: u8,
 
     /// Name or code of the network operator.
-    pub operator: String
+    pub operator: String,
 }
 
 /// Battery status information from the modem.
 #[derive(Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct HttpModemBatteryLevelResponse {
-
     /// Battery status (0=not charging, 1=charging, 2=no battery).
     pub status: u8,
 
@@ -196,12 +189,14 @@ pub struct HttpModemBatteryLevelResponse {
     pub charge: u8,
 
     /// Battery voltage in volts.
-    pub voltage: f32
+    pub voltage: f32,
 }
 
-/// Combine an outgoing message and send response into a dummy SmsStoredMessage.
+/// Combine an outgoing message and send response into a dummy `SmsStoredMessage`.
 impl From<(HttpOutgoingSmsMessage, HttpSmsSendResponse)> for crate::types::SmsStoredMessage {
-    fn from(value: (HttpOutgoingSmsMessage, HttpSmsSendResponse)) -> crate::types::SmsStoredMessage {
+    fn from(
+        value: (HttpOutgoingSmsMessage, HttpSmsSendResponse),
+    ) -> crate::types::SmsStoredMessage {
         crate::types::SmsStoredMessage {
             message_id: value.1.message_id,
             phone_number: value.0.to,
@@ -210,15 +205,14 @@ impl From<(HttpOutgoingSmsMessage, HttpSmsSendResponse)> for crate::types::SmsSt
             is_outgoing: true,
             status: "Unknown".to_string(),
             created_at: None,
-            completed_at: None
+            completed_at: None,
         }
     }
 }
 
-/// The raw DeviceInfoResponse with raw values.
+/// The raw `DeviceInfoResponse` with raw values.
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct HttpSmsDeviceInfoResponse {
-
     /// SMS API version string, including features.
     pub version: String,
 
@@ -228,23 +222,22 @@ pub struct HttpSmsDeviceInfoResponse {
     /// The name of the cellular service provider
     pub service_provider: Option<String>,
 
-    /// Network operator information as (code1, code2, operator_name)
+    /// Network operator information as (code1, code2, `operator_name`)
     pub network_operator: Option<(u8, u8, String)>,
 
-    /// Current network connection status as (status_code, strength_indicator)
+    /// Current network connection status as (`status_code`, `strength_indicator`)
     pub network_status: Option<(u8, u8)>,
 
-    /// Battery information as (level_percentage, charging_status, voltage)
+    /// Battery information as (`level_percentage`, `charging_status`, voltage)
     pub battery: Option<(u8, u8, f32)>,
 
-    /// Signal strength information as (strength_level, quality_indicator)
-    pub signal: Option<(u8, u8)>
+    /// Signal strength information as (`strength_level`, `quality_indicator`)
+    pub signal: Option<(u8, u8)>,
 }
 
 /// Formatted device info response, with each value packed into a proper optional response.
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct HttpSmsDeviceInfoData {
-
     /// SMS API version string, including features.
     pub version: String,
 
@@ -264,7 +257,7 @@ pub struct HttpSmsDeviceInfoData {
     pub battery: Option<HttpModemBatteryLevelResponse>,
 
     /// Signal strength measurements and quality indicators
-    pub signal: Option<HttpModemSignalStrengthResponse>
+    pub signal: Option<HttpModemSignalStrengthResponse>,
 }
 impl From<HttpSmsDeviceInfoResponse> for HttpSmsDeviceInfoData {
     fn from(value: HttpSmsDeviceInfoResponse) -> HttpSmsDeviceInfoData {
@@ -272,26 +265,28 @@ impl From<HttpSmsDeviceInfoResponse> for HttpSmsDeviceInfoData {
             version: value.version,
             phone_number: value.phone_number,
             service_provider: value.service_provider,
-            network_operator: value.network_operator.map(|v|
-                HttpModemNetworkOperatorResponse {
-                    status: v.0, format: v.1, operator: v.2
-                }
-            ),
-            network_status: value.network_status.map(|v|
-                HttpModemNetworkStatusResponse {
-                    registration: v.0, technology: v.1
-                }
-            ),
-            battery: value.battery.map(|v|
-                HttpModemBatteryLevelResponse {
-                    status: v.0, charge: v.1, voltage: v.2
-                }
-            ),
-            signal: value.signal.map(|v|
-                HttpModemSignalStrengthResponse {
-                    rssi: v.0, ber: v.1
-                }
-            ),
+            network_operator: value
+                .network_operator
+                .map(|v| HttpModemNetworkOperatorResponse {
+                    status: v.0,
+                    format: v.1,
+                    operator: v.2,
+                }),
+            network_status: value
+                .network_status
+                .map(|v| HttpModemNetworkStatusResponse {
+                    registration: v.0,
+                    technology: v.1,
+                }),
+            battery: value.battery.map(|v| HttpModemBatteryLevelResponse {
+                status: v.0,
+                charge: v.1,
+                voltage: v.2,
+            }),
+            signal: value.signal.map(|v| HttpModemSignalStrengthResponse {
+                rssi: v.0,
+                ber: v.1,
+            }),
         }
     }
 }

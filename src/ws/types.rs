@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum WebsocketMessage {
-
     /// New SMS message received.
     #[serde(rename = "incoming")]
     IncomingMessage(crate::types::SmsStoredMessage),
@@ -23,19 +22,18 @@ pub enum WebsocketMessage {
         message_id: i64,
 
         /// The received delivery report.
-        report: crate::types::SmsPartialDeliveryReport
+        report: crate::types::SmsPartialDeliveryReport,
     },
 
     /// Modem hat connection status update.
     /// This can be either: Startup, Online, ShuttingDown, Offline
     #[serde(rename = "modem_status_update")]
     ModemStatusUpdate {
-
         /// Previous state from last update.
         previous: crate::types::ModemStatusUpdateState,
 
         /// Current state after update.
-        current: crate::types::ModemStatusUpdateState
+        current: crate::types::ModemStatusUpdateState,
     },
 
     /// An unsolicited position report from GNSS.
@@ -45,13 +43,12 @@ pub enum WebsocketMessage {
     /// WebSocket connection status update (client-side only).
     /// This message is generated locally when there is a connection or disconnection.
     WebsocketConnectionUpdate {
-
         /// Connection status: true = connected, false = disconnected
         connected: bool,
 
         /// If connection is false, will the client attempt to automatically reconnect?
-        reconnect: bool
-    }
+        reconnect: bool,
+    },
 }
 
 /// A callback to be run when the websocket receives a message.

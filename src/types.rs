@@ -1,11 +1,10 @@
 //! Generic types that apply to both HTTP and Websocket interfaces.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Represents a stored SMS message from the database.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SmsStoredMessage {
-
     /// Unique identifier for the message.
     pub message_id: i64,
 
@@ -29,22 +28,21 @@ pub struct SmsStoredMessage {
     pub created_at: Option<u32>,
 
     /// Optional Unix timestamp when the message was completed/delivered.
-    pub completed_at: Option<u32>
+    pub completed_at: Option<u32>,
 }
 
 /// A partial message delivery report, as it comes from the modem.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SmsPartialDeliveryReport {
-
     /// The target phone number that received the message (and has now sent back a delivery report).
     phone_number: String,
 
     /// The modem assigned message reference, this is basically useless outside short-term tracking
-    /// the message_id is unique should always be used instead for identification.
+    /// the `message_id` is unique should always be used instead for identification.
     reference_id: u8,
 
     /// The SMS TP-Status: <https://www.etsi.org/deliver/etsi_ts/123000_123099/123040/16.00.00_60/ts_123040v160000p.pdf#page=71>
-    status: u8
+    status: u8,
 }
 
 /// <https://www.etsi.org/deliver/etsi_ts/123000_123099/123040/16.00.00_60/ts_123040v160000p.pdf#page=71>
@@ -117,13 +115,21 @@ pub enum SmsDeliveryReportStatus {
     // 0x66-0x69 Reserved
     // 0x6A-0x6F Reserved
     // 0x70-0x7F SC specific values
-
     /// Unknown or reserved status code - treated as service rejected per spec
     Unknown(u8),
 }
 impl From<u8> for SmsDeliveryReportStatus {
     fn from(value: u8) -> Self {
-        use SmsDeliveryReportStatus::*;
+        use SmsDeliveryReportStatus::{
+            Congestion, CongestionNoRetry, ConnectionRejectedBySme, ErrorInSme, ErrorInSmeNoRetry,
+            ForwardedButUnconfirmed, IncompatibleDestination, NoInterworkingAvailable,
+            NoResponseFromSme, NoResponseFromSmeNoRetry, NotObtainable,
+            QualityOfServiceNotAvailable, QualityOfServiceNotAvailableNoRetry,
+            QualityOfServiceNotAvailablePermanent, ReceivedBySme, RemoteProcedureError,
+            ReplacedBySc, ServiceRejected, ServiceRejectedNoRetry, SmDeletedByOriginatingSme,
+            SmDeletedByScAdministration, SmDoesNotExist, SmValidityPeriodExpired, SmeBusy,
+            SmeBusyNoRetry, Unknown,
+        };
 
         match value {
             // Transaction completed successfully
@@ -160,53 +166,85 @@ impl From<u8> for SmsDeliveryReportStatus {
             0x65 => ErrorInSmeNoRetry,
 
             // All other values (reserved, SC-specific, or unknown)
-            _ => Unknown(value)
+            _ => Unknown(value),
         }
     }
 }
 impl SmsDeliveryReportStatus {
     /// Returns true if the SMS was successfully delivered to the SME
+    #[must_use]
     pub fn is_successful(&self) -> bool {
-        matches!(self,
-            Self::ReceivedBySme |
-            Self::ForwardedButUnconfirmed |
-            Self::ReplacedBySc
+        matches!(
+            self,
+            Self::ReceivedBySme | Self::ForwardedButUnconfirmed | Self::ReplacedBySc
         )
     }
 
     /// Returns true if this is a temporary error where SC is still trying
+    #[must_use]
     pub fn is_temporary_retrying(&self) -> bool {
-        use SmsDeliveryReportStatus::*;
+        use SmsDeliveryReportStatus::{
+            Congestion, ErrorInSme, NoResponseFromSme, QualityOfServiceNotAvailable,
+            ServiceRejected, SmeBusy, Unknown,
+        };
 
-        matches!(self,
-            Congestion | SmeBusy | NoResponseFromSme | ServiceRejected |
-            QualityOfServiceNotAvailable | ErrorInSme
+        matches!(
+            self,
+            Congestion
+                | SmeBusy
+                | NoResponseFromSme
+                | ServiceRejected
+                | QualityOfServiceNotAvailable
+                | ErrorInSme
         ) || matches!(self, Unknown(val) if *val >= 0x20 && *val <= 0x3F)
     }
 
     /// Returns true if this is a permanent error (no more delivery attempts)
+    #[must_use]
     pub fn is_permanent_error(&self) -> bool {
-        use SmsDeliveryReportStatus::*;
+        use SmsDeliveryReportStatus::{
+            ConnectionRejectedBySme, IncompatibleDestination, NoInterworkingAvailable,
+            NotObtainable, QualityOfServiceNotAvailablePermanent, RemoteProcedureError,
+            SmDeletedByOriginatingSme, SmDeletedByScAdministration, SmDoesNotExist,
+            SmValidityPeriodExpired, Unknown,
+        };
 
-        matches!(self,
-            RemoteProcedureError | IncompatibleDestination | ConnectionRejectedBySme |
-            NotObtainable | QualityOfServiceNotAvailablePermanent | NoInterworkingAvailable |
-            SmValidityPeriodExpired | SmDeletedByOriginatingSme | SmDeletedByScAdministration |
-            SmDoesNotExist
+        matches!(
+            self,
+            RemoteProcedureError
+                | IncompatibleDestination
+                | ConnectionRejectedBySme
+                | NotObtainable
+                | QualityOfServiceNotAvailablePermanent
+                | NoInterworkingAvailable
+                | SmValidityPeriodExpired
+                | SmDeletedByOriginatingSme
+                | SmDeletedByScAdministration
+                | SmDoesNotExist
         ) || matches!(self, Unknown(val) if *val >= 0x40 && *val <= 0x5F)
     }
 
     /// Returns true if this is a temporary error where SC has stopped trying
+    #[must_use]
     pub fn is_temporary_no_retry(&self) -> bool {
-        use SmsDeliveryReportStatus::*;
+        use SmsDeliveryReportStatus::{
+            CongestionNoRetry, ErrorInSmeNoRetry, NoResponseFromSmeNoRetry,
+            QualityOfServiceNotAvailableNoRetry, ServiceRejectedNoRetry, SmeBusyNoRetry, Unknown,
+        };
 
-        matches!(self,
-            CongestionNoRetry | SmeBusyNoRetry | NoResponseFromSmeNoRetry |
-            ServiceRejectedNoRetry | QualityOfServiceNotAvailableNoRetry | ErrorInSmeNoRetry
+        matches!(
+            self,
+            CongestionNoRetry
+                | SmeBusyNoRetry
+                | NoResponseFromSmeNoRetry
+                | ServiceRejectedNoRetry
+                | QualityOfServiceNotAvailableNoRetry
+                | ErrorInSmeNoRetry
         ) || matches!(self, Unknown(val) if *val >= 0x60 && *val <= 0x7F)
     }
 
     /// Converts the status to a simplified status group for easier categorization
+    #[must_use]
     pub fn to_status_group(&self) -> SmsDeliveryReportStatusGroup {
         if self.is_successful() {
             SmsDeliveryReportStatusGroup::Received
@@ -220,13 +258,18 @@ impl SmsDeliveryReportStatus {
                 SmsDeliveryReportStatusGroup::TemporaryFailure
             }
         } else {
-
             // For unknown status codes, classify based on their range.
             match self {
-                Self::Unknown(val) if *val >= 0x20 && *val <= 0x3F => SmsDeliveryReportStatusGroup::Sent,
-                Self::Unknown(val) if *val >= 0x40 && *val <= 0x5F => SmsDeliveryReportStatusGroup::PermanentFailure,
-                Self::Unknown(val) if *val >= 0x60 && *val <= 0x7F => SmsDeliveryReportStatusGroup::TemporaryFailure,
-                _ => SmsDeliveryReportStatusGroup::PermanentFailure // Default for truly unknown codes
+                Self::Unknown(val) if *val >= 0x20 && *val <= 0x3F => {
+                    SmsDeliveryReportStatusGroup::Sent
+                }
+                Self::Unknown(val) if *val >= 0x40 && *val <= 0x5F => {
+                    SmsDeliveryReportStatusGroup::PermanentFailure
+                }
+                Self::Unknown(val) if *val >= 0x60 && *val <= 0x7F => {
+                    SmsDeliveryReportStatusGroup::TemporaryFailure
+                }
+                _ => SmsDeliveryReportStatusGroup::PermanentFailure, // Default for truly unknown codes
             }
         }
     }
@@ -235,7 +278,6 @@ impl SmsDeliveryReportStatus {
 /// Generalised group for message delivery status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SmsDeliveryReportStatusGroup {
-
     /// Message was sent but delivery is still pending (temporary errors with retry)
     Sent,
     /// Message was successfully received by the destination.
@@ -243,7 +285,7 @@ pub enum SmsDeliveryReportStatusGroup {
     /// Temporary delivery failure where SC has stopped retrying.
     TemporaryFailure,
     /// Permanent delivery failure - message will not be delivered.
-    PermanentFailure
+    PermanentFailure,
 }
 impl From<SmsDeliveryReportStatus> for SmsDeliveryReportStatusGroup {
     fn from(status: SmsDeliveryReportStatus) -> Self {
@@ -254,7 +296,6 @@ impl From<SmsDeliveryReportStatus> for SmsDeliveryReportStatusGroup {
 /// Represents the current status of the modem.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum ModemStatusUpdateState {
-
     /// Modem is starting up.
     Startup,
 
@@ -265,7 +306,7 @@ pub enum ModemStatusUpdateState {
     ShuttingDown,
 
     /// Modem is offline and not operational.
-    Offline
+    Offline,
 }
 impl std::fmt::Display for ModemStatusUpdateState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -273,7 +314,7 @@ impl std::fmt::Display for ModemStatusUpdateState {
             ModemStatusUpdateState::Startup => write!(f, "Startup"),
             ModemStatusUpdateState::Online => write!(f, "Online"),
             ModemStatusUpdateState::ShuttingDown => write!(f, "ShuttingDown"),
-            ModemStatusUpdateState::Offline => write!(f, "Offline")
+            ModemStatusUpdateState::Offline => write!(f, "Offline"),
         }
     }
 }
@@ -281,7 +322,6 @@ impl std::fmt::Display for ModemStatusUpdateState {
 /// GNSS (Global Navigation Satellite System) fix status.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum GnssFixStatus {
-
     /// GNSS fix status is unknown.
     Unknown,
 
@@ -292,13 +332,12 @@ pub enum GnssFixStatus {
     Fix2D,
 
     /// 3D GNSS fix (latitude, longitude, and altitude).
-    Fix3D
+    Fix3D,
 }
 
 /// Represents a GNSS position report with optional fields for satellite info.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct GnssPositionReport {
-
     /// Indicates whether the GNSS receiver is currently running.
     pub run_status: bool,
 
@@ -342,5 +381,5 @@ pub struct GnssPositionReport {
     pub gnss_used: Option<u8>,
 
     /// Number of GLONASS satellites in view.
-    pub glonass_in_view: Option<u8>
+    pub glonass_in_view: Option<u8>,
 }
