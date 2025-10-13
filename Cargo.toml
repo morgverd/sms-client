@@ -1,9 +1,9 @@
 [package]
 name = "sms-client"
-description = "A HTTP and WebSocket interface for SMS-API, allowing for SMS messages to be sent and recieved via a local GSM modem!"
-version = "1.5.3"
+version = "1.5.4"
 edition = "2024"
 license = "AGPL-3.0-only"
+description = "Rust client library for sms-server - send/receive SMS through your own GSM hardware with HTTP/WebSocket support and no API subscriptions."
 keywords = ["sms", "gsm", "http-client", "websocket-client"]
 categories = ["hardware-support", "api-bindings"]
 homepage = "https://github.com/morgverd/sms-client"

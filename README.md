@@ -1,6 +1,6 @@
 # SMS Client
 
-A remote client library for interfacing with the [SMS-API](https://github.com/morgverd/sms-api),
+A remote client library for interfacing with the [sms-server](https://github.com/morgverd/sms-server),
 making it easy to send and receive SMS messages from Rust, **all with your own hardware and no API subscriptions!**
 
 This also includes bindings to the SMS database, useful for retrieving previous messages and delivery states.
@@ -15,19 +15,19 @@ Here's some other usage examples from inside a project `Cargo.toml`.
 [dependencies]
 
 # Includes ONLY the HttpClient.
-sms-client = "1.5.3"
+sms-client = "1.5.4"
 
 # Includes BOTH the HttpClient and WebSocketClient.
-sms-client = { version = "1.5.3", features = ["websocket"] }
+sms-client = { version = "1.5.4", features = ["websocket"] }
 
 # Includes ONLY the WebSocketClient.
-sms-client = { version = "1.5.3", default-features = false, features = ["websocket"] }
+sms-client = { version = "1.5.4", default-features = false, features = ["websocket"] }
 
 # Includes BOTH, with Rust-TLS.
-sms-client = { version = "1.5.3", features = ["http-tls-rustls", "websocket-tls-rustls"] }
+sms-client = { version = "1.5.4", features = ["http-tls-rustls", "websocket-tls-rustls"] }
 
 # Includes BOTH, with native TLS.
-sms-client = { version = "1.5.3", features = ["http-tls-native", "websocket-tls-native"] }
+sms-client = { version = "1.5.4", features = ["http-tls-native", "websocket-tls-native"] }
 ```
 
 ## Compilation Features

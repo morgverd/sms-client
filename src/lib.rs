@@ -1,5 +1,5 @@
 //! A client library for SMS-API, via HTTP and an optional websocket connection.
-//! <https://github.com/morgverd/sms-api>
+//! <https://github.com/morgverd/sms-server>
 
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
