@@ -1,6 +1,6 @@
 [package]
 name = "sms-client"
-version = "1.5.5"
+version = "1.6.2"
 edition = "2024"
 license = "AGPL-3.0-only"
 description = "Rust client library for sms-server - send/receive SMS through your own GSM hardware with HTTP/WebSocket support and no API subscriptions."
