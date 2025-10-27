@@ -1,6 +1,6 @@
 [package]
 name = "sms-client"
-version = "1.6.2"
+version = "1.7.1"
 edition = "2024"
 license = "AGPL-3.0-only"
 description = "Rust client library for sms-server - send/receive SMS through your own GSM hardware with HTTP/WebSocket support and no API subscriptions."
@@ -8,15 +8,19 @@ keywords = ["sms", "gsm", "http-client", "websocket-client"]
 categories = ["hardware-support", "api-bindings"]
 homepage = "https://github.com/morgverd/sms-client"
 repository = "https://github.com/morgverd/sms-client"
+documentation = "https://docs.rs/sms-client"
 readme = "README.md"
 authors = ["morgverd <morgverd@gmail.com>"]
+
+[package.metadata.docs.rs]
+features = ["http-tls-rustls", "websocket-tls-rustls"]
 
 [features]
 default = ["http"]
 
 # Base features
 http = ["dep:reqwest"]
-websocket = ["dep:futures-util", "dep:tokio-tungstenite", "dep:tungstenite", "dep:http"]
+websocket = ["dep:log", "dep:futures-util", "dep:tokio-tungstenite", "dep:tungstenite", "dep:http"]
 
 # TLS variants for HTTP
 http-tls-rustls = ["http", "reqwest/rustls-tls"]
@@ -29,7 +33,6 @@ websocket-tls-native = ["websocket", "tokio-tungstenite/native-tls", "dep:native
 [dependencies]
 thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["full"] }
-log = "0.4.28"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
 url = "2.5.7"
@@ -38,6 +41,7 @@ url = "2.5.7"
 reqwest = { version = "0.12.23", optional = true, default-features = false, features = ["json"] }
 
 # Optional WebSocket feature.
+log = { version = "0.4.28", optional = true }
 futures-util = { version = "0.3.31", optional = true }
 tokio-tungstenite = { version = "0.27.0", optional = true, default-features = false, features = ["connect"] }
 tungstenite = { version = "0.27.0", optional = true }

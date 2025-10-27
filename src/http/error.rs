@@ -29,11 +29,8 @@ pub enum HttpError {
     },
 
     /// API returned success=false with an error message.
-    #[error("API responded with success=false: {message}")]
-    ApiError {
-        /// The `error_message` key from response.
-        message: String,
-    },
+    #[error("{0}")]
+    ApiError(String),
 
     /// TLS configuration error
     #[error("TLS error: {0}")]

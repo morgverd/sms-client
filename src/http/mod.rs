@@ -19,41 +19,54 @@ async fn read_http_response<T>(response: reqwest::Response) -> HttpResult<T>
 where
     T: serde::de::DeserializeOwned,
 {
-    // Verify response status code.
+    let is_json = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|ct| ct.to_str().ok())
+        .map(|ct| ct.contains("application/json"))
+        .unwrap_or(false);
+
+    if is_json {
+        // Verify JSON success status.
+        let json: serde_json::Value = response.json().await?;
+        let success = json
+            .get("success")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+
+        if !success {
+            let message = json
+                .get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown API error!")
+                .to_string();
+
+            return Err(HttpError::ApiError(message));
+        }
+
+        // Read response field and make into expected value.
+        let response_value = json
+            .get("response")
+            .ok_or(HttpError::MissingResponseField)?;
+
+        return serde_json::from_value(response_value.clone()).map_err(HttpError::JsonError);
+    }
+
+    // Return a status error if there isn't any JSON error to use.
     let status = response.status();
     if !status.is_success() {
         let error_text = response
             .text()
             .await
             .unwrap_or_else(|_| "Unknown error!".to_string());
+
         return Err(HttpError::HttpStatus {
             status: status.as_u16(),
             message: error_text,
         });
     }
 
-    // Verify JSON success status.
-    let json: serde_json::Value = response.json().await?;
-    let success = json
-        .get("success")
-        .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-
-    if !success {
-        let message = json
-            .get("error_message")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Unknown API error!")
-            .to_string();
-        return Err(HttpError::ApiError { message });
-    }
-
-    // Read response field and make into expected value.
-    let response_value = json
-        .get("response")
-        .ok_or(HttpError::MissingResponseField)?;
-
-    serde_json::from_value(response_value.clone()).map_err(HttpError::JsonError)
+    Err(HttpError::MissingResponseField)
 }
 
 /// Read a modem-specific response that contains a "type" field and "data" field.
