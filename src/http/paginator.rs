@@ -22,7 +22,7 @@ where
     /// Create the paginator with the http batch generator.
     ///
     /// # Example
-    /// ```rust
+    /// ```text
     /// use sms_client::Client;
     /// use sms_client::config::ClientConfig;
     /// use sms_client::http::paginator::HttpPaginator;
@@ -31,7 +31,7 @@ where
     /// let http = Client::new(ClientConfig::http_only("http://localhost:3000").with_auth("token!"))?.http_arc();
     /// let mut paginator = HttpPaginator::new(
     ///     move |pagination| {
-    ///         let http = http.clone();
+    ///         let http = http.expect("Missing HTTP client configuration!").clone();
     ///         async move {
     ///             http.get_latest_numbers(pagination).await
     ///         }
@@ -60,7 +60,7 @@ where
     /// This starts at offset 0 with a limit of 50 per page.
     ///
     /// # Example
-    /// ```rust
+    /// ```text
     /// use sms_client::http;
     /// use sms_client::Client;
     /// use sms_client::config::ClientConfig;
@@ -88,7 +88,6 @@ where
 
     /// Fetch the next batch of items from the API.
     async fn fetch_next_batch(&mut self) -> HttpResult<bool> {
-        log::trace!("Fetching next batch: {:?}", self.pagination);
         let response = (self.http_fn)(Some(self.pagination)).await?;
 
         let received_count = response.len() as u64;
@@ -117,7 +116,7 @@ where
     /// Get the next item, automatically fetching next pages as needed.
     ///
     /// # Example
-    /// ```rust
+    /// ```text
     /// use sms_client::http::HttpClient;
     /// use sms_client::http::paginator::HttpPaginator;
     ///
@@ -188,7 +187,7 @@ where
     /// Process items in chunks, calling the provided closure for each chunk.
     ///
     /// # Example
-    /// ```rust
+    /// ```text
     /// use std::sync::Arc;
     /// use sms_client::http::HttpClient;
     /// use sms_client::http::paginator::HttpPaginator;

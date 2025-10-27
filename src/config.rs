@@ -360,7 +360,7 @@ impl ClientConfig {
     /// This only sets the authorization value for components that already exist.
     ///
     /// # Example
-    /// ```rust
+    /// ```text
     /// use sms_client::config::ClientConfig;
     ///
     /// let config = ClientConfig::both(
@@ -387,7 +387,7 @@ impl ClientConfig {
     /// Modify/Set a `TLSConfig` with certificate filepath.
     ///
     /// # Example
-    /// ```rust
+    /// ```text
     /// use sms_client::config::ClientConfig;
     ///
     /// let config = ClientConfig::http_only("https://192.168.1.2:3000")
