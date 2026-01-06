@@ -2,7 +2,6 @@
 
 use crate::ws::connection::ConnectionParams;
 use crate::ws::error::*;
-use crate::ws::types::*;
 use futures_util::{SinkExt, StreamExt};
 
 /// Control messages for the worker loop
@@ -21,7 +20,7 @@ enum MessageAction {
 pub struct WorkerLoop {
     config: crate::config::WebSocketConfig,
     tls_config: Option<crate::config::TLSConfig>,
-    callback: Option<MessageCallback>,
+    callback: Option<crate::ws::MessageCallback>,
     is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>,
 }
 impl WorkerLoop {
@@ -29,7 +28,7 @@ impl WorkerLoop {
     pub fn new(
         config: crate::config::WebSocketConfig,
         tls_config: Option<crate::config::TLSConfig>,
-        callback: Option<MessageCallback>,
+        callback: Option<crate::ws::MessageCallback>,
         is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>,
     ) -> Self {
         Self {
@@ -201,7 +200,7 @@ impl WorkerLoop {
 
     /// Process text message
     fn process_text_message(&self, text: String) {
-        match serde_json::from_str::<WebsocketMessage>(&text) {
+        match serde_json::from_str::<sms_types::websocket::WebsocketMessage>(&text) {
             Ok(ws_msg) => {
                 if let Some(cb) = &self.callback {
                     cb(ws_msg);
@@ -262,10 +261,12 @@ impl WorkerLoop {
     /// Emit connection status update
     fn emit_connection_update(&self, connected: bool, reconnect: bool) {
         if let Some(cb) = &self.callback {
-            cb(WebsocketMessage::WebsocketConnectionUpdate {
-                connected,
-                reconnect,
-            });
+            cb(
+                sms_types::websocket::WebsocketMessage::WebsocketConnectionUpdate {
+                    connected,
+                    reconnect,
+                },
+            );
         }
     }
 }

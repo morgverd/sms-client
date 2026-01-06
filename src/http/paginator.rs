@@ -1,7 +1,7 @@
 //! HTTP request paginator, supporting lazy traversal across large sets
 
 use crate::http::error::HttpResult;
-use crate::http::types::HttpPaginationOptions;
+use sms_types::http::HttpPaginationOptions;
 
 /// Call a function with an update `HttpPaginationOptions` for each batch request,
 /// simplifying lazy access to large response sets such as messages etc.

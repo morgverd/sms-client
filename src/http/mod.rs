@@ -2,16 +2,16 @@
 //! This can be used to interface with the HTTP API standalone if required.
 
 use crate::http::error::{HttpError, HttpResult};
-use crate::http::types::{
+use sms_types::http::{
     HttpModemBatteryLevelResponse, HttpModemNetworkOperatorResponse,
-    HttpModemNetworkStatusResponse, HttpModemSignalStrengthResponse, HttpOutgoingSmsMessage,
-    HttpPaginationOptions, HttpSmsDeliveryReport, HttpSmsDeviceInfoData, HttpSmsDeviceInfoResponse,
-    HttpSmsSendResponse, LatestNumberFriendlyNamePair,
+    HttpModemNetworkStatusResponse, HttpModemSignalStrengthResponse, HttpPaginationOptions,
+    HttpSmsDeviceInfoData, HttpSmsDeviceInfoResponse, HttpSmsSendResponse,
+    LatestNumberFriendlyNamePair,
 };
+use sms_types::sms::{SmsDeliveryReport, SmsOutgoingMessage};
 
 pub mod error;
 pub mod paginator;
-pub mod types;
 
 /// Take a response from the client, verify that the status code is 200,
 /// then read JSON body and ensure success is true and finally return response value.
@@ -23,8 +23,7 @@ where
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|ct| ct.to_str().ok())
-        .map(|ct| ct.contains("application/json"))
-        .unwrap_or(false);
+        .is_some_and(|ct| ct.contains("application/json"));
 
     if is_json {
         // Verify JSON success status.
@@ -230,7 +229,7 @@ impl HttpClient {
         &self,
         phone_number: impl Into<String>,
         pagination: Option<HttpPaginationOptions>,
-    ) -> HttpResult<Vec<crate::types::SmsStoredMessage>> {
+    ) -> HttpResult<Vec<sms_types::sms::SmsMessage>> {
         let mut body = serde_json::json!({
             "phone_number": phone_number.into()
         });
@@ -272,7 +271,7 @@ impl HttpClient {
         &self,
         message_id: i64,
         pagination: Option<HttpPaginationOptions>,
-    ) -> HttpResult<Vec<HttpSmsDeliveryReport>> {
+    ) -> HttpResult<Vec<SmsDeliveryReport>> {
         let mut body = serde_json::json!({
             "message_id": message_id
         });
@@ -293,10 +292,7 @@ impl HttpClient {
     /// Send an SMS message to a target `phone_number`. The result will contain the
     /// message reference (provided from modem) and message id (used internally).
     /// This will use the message timeout for the request if one is set.
-    pub async fn send_sms(
-        &self,
-        message: &HttpOutgoingSmsMessage,
-    ) -> HttpResult<HttpSmsSendResponse> {
+    pub async fn send_sms(&self, message: &SmsOutgoingMessage) -> HttpResult<HttpSmsSendResponse> {
         let url = self.base_url.join("/sms/send")?;
 
         // Create request, applying request timeout if one is set (+ 5).

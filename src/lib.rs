@@ -10,7 +10,6 @@ use crate::error::{ClientError, ClientResult};
 
 pub mod config;
 pub mod error;
-pub mod types;
 
 #[cfg(feature = "http")]
 pub mod http;
@@ -81,14 +80,13 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use sms_client::http::types::HttpOutgoingSmsMessage;
-    /// use sms_client::ws::types::WebsocketMessage;
+    /// use sms_types::websocket::WebsocketMessage;
     /// use sms_client::Client;
     /// use log::info;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client: Client = unimplemented!("See other examples");
+    /// let client: Client = unimplemented!("See other examples");
     ///
     ///     client.on_message(move |message, client| {
     ///         match message {
@@ -103,7 +101,7 @@ impl Client {
     #[cfg(feature = "websocket")]
     pub async fn on_message<F>(&self, callback: F) -> ClientResult<()>
     where
-        F: Fn(ws::types::WebsocketMessage, std::sync::Arc<Self>) + Send + Sync + 'static,
+        F: Fn(sms_types::websocket::WebsocketMessage, std::sync::Arc<Self>) + Send + Sync + 'static,
     {
         let ws_client = self
             .ws_client
@@ -123,8 +121,8 @@ impl Client {
     ///
     /// # Example
     /// ```
+    /// use sms_types::websocket::WebsocketMessage;
     /// use sms_client::Client;
-    /// use sms_client::ws::types::WebsocketMessage;
     /// use log::info;
     ///
     /// #[tokio::main]
@@ -142,7 +140,7 @@ impl Client {
     #[cfg(feature = "websocket")]
     pub async fn on_message_simple<F>(&self, callback: F) -> ClientResult<()>
     where
-        F: Fn(ws::types::WebsocketMessage) + Send + Sync + 'static,
+        F: Fn(sms_types::websocket::WebsocketMessage) + Send + Sync + 'static,
     {
         let ws_client = self
             .ws_client

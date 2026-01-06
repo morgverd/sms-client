@@ -487,6 +487,7 @@ impl Default for ClientConfig {
 }
 
 #[cfg(feature = "http")]
+#[allow(clippy::needless_update)]
 impl From<HttpConfig> for ClientConfig {
     fn from(http: HttpConfig) -> Self {
         ClientConfig {
@@ -498,6 +499,7 @@ impl From<HttpConfig> for ClientConfig {
 }
 
 #[cfg(feature = "websocket")]
+#[allow(clippy::needless_update)]
 impl From<WebSocketConfig> for ClientConfig {
     fn from(ws: WebSocketConfig) -> Self {
         ClientConfig {
