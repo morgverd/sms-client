@@ -1,6 +1,6 @@
 [package]
 name = "sms-client"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2024"
 license = "AGPL-3.0-only"
 description = "Rust client library for sms-server - send/receive SMS through your own GSM hardware with HTTP/WebSocket support and no API subscriptions."
@@ -31,7 +31,7 @@ websocket-tls-rustls = ["websocket", "tokio-tungstenite/rustls-tls-webpki-roots"
 websocket-tls-native = ["websocket", "tokio-tungstenite/native-tls", "dep:native-tls"]
 
 [dependencies]
-sms-types = { path = "../sms-types", features = ["http", "websocket"] }
+sms-types = { path = "../sms-types", features = ["http"] }
 thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["full"] }
 serde = { version = "1.0.219", features = ["derive"] }

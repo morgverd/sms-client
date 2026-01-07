@@ -1,6 +1,5 @@
 //! WebSocket worker loop and message handling.
 
-use crate::ws::connection::ConnectionParams;
 use crate::ws::error::*;
 use futures_util::{SinkExt, StreamExt};
 
@@ -47,8 +46,10 @@ impl WorkerLoop {
         let mut reconnect_count = 0u32;
 
         // Create connection parameters
-        let connection_params =
-            ConnectionParams::from_config(&self.config, self.tls_config.as_ref())?;
+        let connection_params = crate::ws::connection::ConnectionParams::from_config(
+            &self.config,
+            self.tls_config.as_ref(),
+        )?;
 
         loop {
             // Try to establish connection and handle messages
@@ -110,7 +111,7 @@ impl WorkerLoop {
     /// Handle an active WebSocket connection
     async fn handle_connection(
         &self,
-        connection_params: &ConnectionParams,
+        connection_params: &crate::ws::connection::ConnectionParams,
         control_rx: &mut tokio::sync::mpsc::UnboundedReceiver<ControlMessage>,
     ) -> WebsocketResult<bool> {
         // Establish connection
@@ -200,7 +201,7 @@ impl WorkerLoop {
 
     /// Process text message
     fn process_text_message(&self, text: String) {
-        match serde_json::from_str::<sms_types::websocket::WebsocketMessage>(&text) {
+        match serde_json::from_str::<sms_types::events::Event>(&text) {
             Ok(ws_msg) => {
                 if let Some(cb) = &self.callback {
                     cb(ws_msg);
@@ -261,12 +262,10 @@ impl WorkerLoop {
     /// Emit connection status update
     fn emit_connection_update(&self, connected: bool, reconnect: bool) {
         if let Some(cb) = &self.callback {
-            cb(
-                sms_types::websocket::WebsocketMessage::WebsocketConnectionUpdate {
-                    connected,
-                    reconnect,
-                },
-            );
+            cb(sms_types::events::Event::WebsocketConnectionUpdate {
+                connected,
+                reconnect,
+            });
         }
     }
 }
