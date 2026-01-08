@@ -11,5 +11,4 @@ pub use client::WebSocketClient;
 pub use error::{WebsocketError, WebsocketResult};
 
 /// A callback to be run when the websocket receives a message.
-pub type MessageCallback =
-    std::sync::Arc<dyn Fn(sms_types::websocket::WebsocketMessage) + Send + Sync>;
+pub type MessageCallback = std::sync::Arc<dyn Fn(sms_types::events::Event) + Send + Sync>;

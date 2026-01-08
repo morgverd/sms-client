@@ -80,8 +80,8 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use sms_types::websocket::WebsocketMessage;
     /// use sms_client::Client;
+    /// use sms_types::events::Event;
     /// use log::info;
     ///
     /// #[tokio::main]
@@ -90,7 +90,7 @@ impl Client {
     ///
     ///     client.on_message(move |message, client| {
     ///         match message {
-    ///             WebsocketMessage::IncomingMessage(sms) => {
+    ///             Event::IncomingMessage(sms) => {
     ///                 // Can access client.http() here!
     ///             },
     ///             _ => { }
@@ -101,7 +101,7 @@ impl Client {
     #[cfg(feature = "websocket")]
     pub async fn on_message<F>(&self, callback: F) -> ClientResult<()>
     where
-        F: Fn(sms_types::websocket::WebsocketMessage, std::sync::Arc<Self>) + Send + Sync + 'static,
+        F: Fn(sms_types::events::Event, std::sync::Arc<Self>) + Send + Sync + 'static,
     {
         let ws_client = self
             .ws_client
@@ -121,8 +121,8 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use sms_types::websocket::WebsocketMessage;
     /// use sms_client::Client;
+    /// use sms_types::events::Event;
     /// use log::info;
     ///
     /// #[tokio::main]
@@ -131,7 +131,7 @@ impl Client {
     ///
     ///     client.on_message_simple(move |message| {
     ///         match message {
-    ///             WebsocketMessage::OutgoingMessage(sms) => info!("Outgoing message: {:?}", sms),
+    ///             Event::OutgoingMessage(sms) => info!("Outgoing message: {:?}", sms),
     ///             _ => { }
     ///         }
     ///     }).await?
@@ -140,7 +140,7 @@ impl Client {
     #[cfg(feature = "websocket")]
     pub async fn on_message_simple<F>(&self, callback: F) -> ClientResult<()>
     where
-        F: Fn(sms_types::websocket::WebsocketMessage) + Send + Sync + 'static,
+        F: Fn(sms_types::events::Event) + Send + Sync + 'static,
     {
         let ws_client = self
             .ws_client

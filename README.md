@@ -55,13 +55,12 @@ This is an example that listens for incoming SMS messages, and then replies with
 
 ```rust
 use std::sync::Arc;
-
 use sms_client::types::SmsStoredMessage;
-use sms_client::ws::types::WebsocketMessage;
 use sms_client::http::types::HttpOutgoingSmsMessage;
 use sms_client::config::ClientConfig;
 use sms_client::error::ClientResult;
 use sms_client::Client;
+use sms_types::events::Event;
 
 #[tokio::main]
 async fn main() -> ClientResult<()> {
@@ -85,9 +84,9 @@ async fn main() -> ClientResult<()> {
     let client = Client::new(config)?;
     client.on_message(move |message, client| {
         
-        // Match WebSocket message to check if it's an IncomingMessage.
+        // Match WebSocket event to check if it's an IncomingMessage.
         match message {
-            WebsocketMessage::IncomingMessage(sms) => send_reply(client, sms),
+            Event::IncomingMessage(sms) => send_reply(client, sms),
             _ => { }
         }
     }).await?;
