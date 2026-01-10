@@ -1,17 +1,17 @@
-use std::env::var;
 use log::{debug, error};
-use pushover_rs::{send_pushover_request, MessageBuilder};
+use pushover_rs::{MessageBuilder, send_pushover_request};
+use std::env::var;
 
 use sms_client::Client;
-use sms_client::types::SmsStoredMessage;
-use sms_client::ws::types::WebsocketMessage;
 use sms_client::config::{ClientConfig, WebSocketConfig};
 use sms_client::error::ClientError;
+use sms_client::types::events::Event;
+use sms_client::types::sms::SmsMessage;
 
 #[derive(Clone)]
 struct PushoverConfig {
     users: Vec<String>,
-    token: String
+    token: String,
 }
 
 #[derive(Clone)]
@@ -19,7 +19,7 @@ struct AppConfig {
     websocket_url: String,
     websocket_auth: Option<String>,
     websocket_cert: Option<String>,
-    pushover: PushoverConfig
+    pushover: PushoverConfig,
 }
 impl AppConfig {
     fn from_env() -> Self {
@@ -34,17 +34,16 @@ impl AppConfig {
                     .map(|s| s.trim().to_string())
                     .collect(),
 
-                token: var("SMS_PUSHOVER_TOKEN").expect("SMS_PUSHOVER_TOKEN not set")
-            }
+                token: var("SMS_PUSHOVER_TOKEN").expect("SMS_PUSHOVER_TOKEN not set"),
+            },
         }
     }
 }
 impl Into<ClientConfig> for AppConfig {
     fn into(self) -> ClientConfig {
-
         // Filter for only incoming messages.
-        let mut ws_config = WebSocketConfig::new(&self.websocket_url)
-            .with_filtered_events(Some(vec!["incoming"]));
+        let mut ws_config =
+            WebSocketConfig::new(&self.websocket_url).with_filtered_events(Some(vec!["incoming"]));
 
         // Apply optional authorization.
         if let Some(auth) = &self.websocket_auth {
@@ -54,13 +53,15 @@ impl Into<ClientConfig> for AppConfig {
         // Apply optional TLS certificate.
         let client_config: ClientConfig = ws_config.into();
         match &self.websocket_cert {
-            Some(filepath) => client_config.with_certificate(filepath).expect("Failed to set certificate on ClientConfig!"),
-            None => client_config
+            Some(filepath) => client_config
+                .with_certificate(filepath)
+                .expect("Failed to set certificate on ClientConfig!"),
+            None => client_config,
         }
     }
 }
 
-async fn send_message(config: PushoverConfig, sms: &SmsStoredMessage) {
+async fn send_message(config: PushoverConfig, sms: &SmsMessage) {
     debug!("Got SMS message: {:?}", sms);
 
     // Create a new message for each target pushover user key.
@@ -69,8 +70,8 @@ async fn send_message(config: PushoverConfig, sms: &SmsStoredMessage) {
             .set_title(&format!("SMS from {}", sms.phone_number));
 
         match send_pushover_request(builder.build()).await {
-            Ok(response) if response.status == 1 => { },
-            _ => error!("Failed to send pushover request")
+            Ok(response) if response.status == 1 => {}
+            _ => error!("Failed to send pushover request"),
         }
     }
 }
@@ -82,19 +83,20 @@ async fn main() -> Result<(), ClientError> {
 
     // Listen for incoming messages.
     let client = Client::new(config.clone().into())?;
-    client.on_message_simple(move |message| {
-        match message {
-            WebsocketMessage::IncomingMessage(sms) => {
-
-                // Create a tokio task to send the pushover notifications.
-                let pushover_config = config.pushover.clone();
-                tokio::spawn(async move {
-                    send_message(pushover_config, &sms).await;
-                });
-            },
-            _ => { }
-        }
-    }).await?;
+    client
+        .on_message_simple(move |message| {
+            match message {
+                Event::IncomingMessage(sms) => {
+                    // Create a tokio task to send the pushover notifications.
+                    let pushover_config = config.pushover.clone();
+                    tokio::spawn(async move {
+                        send_message(pushover_config, &sms).await;
+                    });
+                }
+                _ => {}
+            }
+        })
+        .await?;
 
     // Start the websocket and block since we have nothing else to do.
     client.start_blocking_websocket().await

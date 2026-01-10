@@ -360,7 +360,7 @@ impl ClientConfig {
     /// This only sets the authorization value for components that already exist.
     ///
     /// # Example
-    /// ```text
+    /// ```
     /// use sms_client::config::ClientConfig;
     ///
     /// let config = ClientConfig::both(
@@ -387,7 +387,7 @@ impl ClientConfig {
     /// Modify/Set a `TLSConfig` with certificate filepath.
     ///
     /// # Example
-    /// ```text
+    /// ```
     /// use sms_client::config::ClientConfig;
     ///
     /// let config = ClientConfig::http_only("https://192.168.1.2:3000")
@@ -487,6 +487,7 @@ impl Default for ClientConfig {
 }
 
 #[cfg(feature = "http")]
+#[allow(clippy::needless_update)]
 impl From<HttpConfig> for ClientConfig {
     fn from(http: HttpConfig) -> Self {
         ClientConfig {
@@ -498,6 +499,7 @@ impl From<HttpConfig> for ClientConfig {
 }
 
 #[cfg(feature = "websocket")]
+#[allow(clippy::needless_update)]
 impl From<WebSocketConfig> for ClientConfig {
     fn from(ws: WebSocketConfig) -> Self {
         ClientConfig {

@@ -6,11 +6,11 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
 
+pub use sms_types as types;
 use crate::error::{ClientError, ClientResult};
 
 pub mod config;
 pub mod error;
-pub mod types;
 
 #[cfg(feature = "http")]
 pub mod http;
@@ -81,18 +81,17 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use sms_client::http::types::HttpOutgoingSmsMessage;
-    /// use sms_client::ws::types::WebsocketMessage;
     /// use sms_client::Client;
+    /// use sms_client::types::events::Event;
     /// use log::info;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let client: Client = unimplemented!("See other examples");
+    /// let client: Client = unimplemented!("See other examples");
     ///
     ///     client.on_message(move |message, client| {
     ///         match message {
-    ///             WebsocketMessage::IncomingMessage(sms) => {
+    ///             Event::IncomingMessage(sms) => {
     ///                 // Can access client.http() here!
     ///             },
     ///             _ => { }
@@ -103,7 +102,7 @@ impl Client {
     #[cfg(feature = "websocket")]
     pub async fn on_message<F>(&self, callback: F) -> ClientResult<()>
     where
-        F: Fn(ws::types::WebsocketMessage, std::sync::Arc<Self>) + Send + Sync + 'static,
+        F: Fn(sms_types::events::Event, std::sync::Arc<Self>) + Send + Sync + 'static,
     {
         let ws_client = self
             .ws_client
@@ -124,7 +123,7 @@ impl Client {
     /// # Example
     /// ```
     /// use sms_client::Client;
-    /// use sms_client::ws::types::WebsocketMessage;
+    /// use sms_client::types::events::Event;
     /// use log::info;
     ///
     /// #[tokio::main]
@@ -133,7 +132,7 @@ impl Client {
     ///
     ///     client.on_message_simple(move |message| {
     ///         match message {
-    ///             WebsocketMessage::OutgoingMessage(sms) => info!("Outgoing message: {:?}", sms),
+    ///             Event::OutgoingMessage(sms) => info!("Outgoing message: {:?}", sms),
     ///             _ => { }
     ///         }
     ///     }).await?
@@ -142,7 +141,7 @@ impl Client {
     #[cfg(feature = "websocket")]
     pub async fn on_message_simple<F>(&self, callback: F) -> ClientResult<()>
     where
-        F: Fn(ws::types::WebsocketMessage) + Send + Sync + 'static,
+        F: Fn(sms_types::events::Event) + Send + Sync + 'static,
     {
         let ws_client = self
             .ws_client

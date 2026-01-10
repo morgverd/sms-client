@@ -1,14 +1,13 @@
 //! Main WebSocket client implementation.
 
 use crate::ws::error::*;
-use crate::ws::types::*;
 use crate::ws::worker::{ControlMessage, WorkerLoop};
 
 /// WebSocket client for real-time message reception.
 pub struct WebSocketClient {
     config: crate::config::WebSocketConfig,
     tls_config: Option<crate::config::TLSConfig>,
-    callback: Option<MessageCallback>,
+    callback: Option<crate::ws::MessageCallback>,
     control_tx: Option<tokio::sync::mpsc::UnboundedSender<ControlMessage>>,
     worker_handle: Option<tokio::task::JoinHandle<WebsocketResult<()>>>,
     is_connected: std::sync::Arc<tokio::sync::RwLock<bool>>,
@@ -32,7 +31,7 @@ impl WebSocketClient {
     /// Set the message callback handler.
     pub fn on_message<F>(&mut self, callback: F)
     where
-        F: Fn(WebsocketMessage) + Send + Sync + 'static,
+        F: Fn(sms_types::events::Event) + Send + Sync + 'static,
     {
         self.callback = Some(std::sync::Arc::new(callback));
     }
