@@ -22,11 +22,11 @@ where
     /// Create the paginator with the http batch generator.
     ///
     /// # Example
-    /// ```text
+    /// ```
     /// use sms_client::Client;
     /// use sms_client::config::ClientConfig;
     /// use sms_client::http::paginator::HttpPaginator;
-    /// use sms_client::http::types::HttpPaginationOptions;
+    /// use sms_client::types::http::HttpPaginationOptions;
     ///
     /// let http = Client::new(ClientConfig::http_only("http://localhost:3000").with_auth("token!"))?.http_arc();
     /// let mut paginator = HttpPaginator::new(
@@ -60,8 +60,7 @@ where
     /// This starts at offset 0 with a limit of 50 per page.
     ///
     /// # Example
-    /// ```text
-    /// use sms_client::http;
+    /// ```
     /// use sms_client::Client;
     /// use sms_client::config::ClientConfig;
     /// use sms_client::http::HttpClient;
@@ -116,7 +115,7 @@ where
     /// Get the next item, automatically fetching next pages as needed.
     ///
     /// # Example
-    /// ```text
+    /// ```
     /// use sms_client::http::HttpClient;
     /// use sms_client::http::paginator::HttpPaginator;
     ///
@@ -187,11 +186,11 @@ where
     /// Process items in chunks, calling the provided closure for each chunk.
     ///
     /// # Example
-    /// ```text
+    /// ```
     /// use std::sync::Arc;
     /// use sms_client::http::HttpClient;
     /// use sms_client::http::paginator::HttpPaginator;
-    /// use sms_client::http::types::HttpPaginationOptions;
+    /// use sms_client::types::http::HttpPaginationOptions;
     ///
     /// /// Read all messages from a phone number, in chunks of 10.
     /// async fn read_all_messages(phone_number: &str, http: Arc<HttpClient>) {

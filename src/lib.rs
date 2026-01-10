@@ -6,6 +6,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
 
+pub use sms_types as types;
 use crate::error::{ClientError, ClientResult};
 
 pub mod config;
@@ -81,7 +82,7 @@ impl Client {
     /// # Example
     /// ```
     /// use sms_client::Client;
-    /// use sms_types::events::Event;
+    /// use sms_client::types::events::Event;
     /// use log::info;
     ///
     /// #[tokio::main]
@@ -122,7 +123,7 @@ impl Client {
     /// # Example
     /// ```
     /// use sms_client::Client;
-    /// use sms_types::events::Event;
+    /// use sms_client::types::events::Event;
     /// use log::info;
     ///
     /// #[tokio::main]
