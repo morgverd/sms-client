@@ -6,8 +6,8 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
 
-pub use sms_types as types;
 use crate::error::{ClientError, ClientResult};
+pub use sms_types as types;
 
 pub mod config;
 pub mod error;

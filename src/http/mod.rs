@@ -2,6 +2,7 @@
 //! This can be used to interface with the HTTP API standalone if required.
 
 use crate::http::error::{HttpError, HttpResult};
+use sms_types::gnss::{FixStatus, PositionReport};
 use sms_types::http::{
     HttpModemBatteryLevelResponse, HttpModemNetworkOperatorResponse,
     HttpModemNetworkStatusResponse, HttpModemSignalStrengthResponse, HttpPaginationOptions,
@@ -309,32 +310,47 @@ impl HttpClient {
 
     /// Get the carrier network status.
     pub async fn get_network_status(&self) -> HttpResult<HttpModemNetworkStatusResponse> {
-        self.modem_request("modem-status", "NetworkStatus").await
+        self.modem_request("/sms/modem-status", "NetworkStatus")
+            .await
     }
 
     /// Get the modem signal strength for the connected tower.
     pub async fn get_signal_strength(&self) -> HttpResult<HttpModemSignalStrengthResponse> {
-        self.modem_request("signal-strength", "SignalStrength")
+        self.modem_request("/sms/signal-strength", "SignalStrength")
             .await
     }
 
     /// Get the underlying network operator, this is often the same across
     /// multiple service providers for a given region. Eg: vodafone.
     pub async fn get_network_operator(&self) -> HttpResult<HttpModemNetworkOperatorResponse> {
-        self.modem_request("network-operator", "NetworkOperator")
+        self.modem_request("/sms/network-operator", "NetworkOperator")
             .await
     }
 
     /// Get the SIM service provider, this is the brand that manages the contract.
     /// This matters less than the network operator, as they're just resellers. Eg: ASDA Mobile.
     pub async fn get_service_provider(&self) -> HttpResult<String> {
-        self.modem_request("service-provider", "ServiceProvider")
+        self.modem_request("/sms/service-provider", "ServiceProvider")
             .await
     }
 
     /// Get the Modem Hat's battery level, which is used for GNSS warm starts.
     pub async fn get_battery_level(&self) -> HttpResult<HttpModemBatteryLevelResponse> {
-        self.modem_request("battery-level", "BatteryLevel").await
+        self.modem_request("/sms/battery-level", "BatteryLevel")
+            .await
+    }
+
+    /// Get the GNSS module's fix status, indicating location data capabilities.
+    /// If GNSS is disabled/unavailable this will likely be `FixStatus::Unknown`.
+    pub async fn get_gnss_status(&self) -> HttpResult<FixStatus> {
+        self.modem_request("/gnss/status", "GNSSStatus").await
+    }
+
+    /// Get the GNSS module's current location (`PositionReport`).
+    /// If GNSS is disabled/unavailable some values be None, others may be Some(0.00).
+    /// This depends on the SIM chip being used.
+    pub async fn get_gnss_location(&self) -> HttpResult<PositionReport> {
+        self.modem_request("/gnss/location", "GNSSLocation").await
     }
 
     /// Get device info summary result. This is a more efficient way to request all device info.
@@ -378,7 +394,7 @@ impl HttpClient {
     where
         T: serde::de::DeserializeOwned,
     {
-        let url = self.base_url.join(&format!("/sms/{route}"))?;
+        let url = self.base_url.join(route)?;
         let response = self
             .setup_request(true, self.client.get(url))
             .send()
