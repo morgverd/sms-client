@@ -40,14 +40,6 @@ pub enum HttpError {
     #[error("Missing 'response' field in API response")]
     MissingResponseField,
 
-    /// Modem response missing the expected 'type' field.
-    #[error("Missing 'type' field in API response")]
-    MissingTypeField,
-
-    /// Modem response missing the expected 'data' field.
-    #[error("Missing 'data' field in API response")]
-    MissingDataField,
-
     /// Modem response type doesn't match what was expected.
     #[error("Type mismatch: expected '{expected}', got '{actual}'")]
     ResponseTypeMismatch {

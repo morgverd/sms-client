@@ -6,8 +6,7 @@ use sms_types::gnss::{FixStatus, PositionReport};
 use sms_types::http::{
     HttpModemBatteryLevelResponse, HttpModemNetworkOperatorResponse,
     HttpModemNetworkStatusResponse, HttpModemSignalStrengthResponse, HttpPaginationOptions,
-    HttpSmsDeviceInfoData, HttpSmsDeviceInfoResponse, HttpSmsSendResponse,
-    LatestNumberFriendlyNamePair,
+    HttpSmsDeviceInfoResponse, HttpSmsSendResponse, LatestNumberFriendlyNamePair,
 };
 use sms_types::sms::{SmsDeliveryReport, SmsOutgoingMessage};
 
@@ -67,34 +66,6 @@ where
     }
 
     Err(HttpError::MissingResponseField)
-}
-
-/// Read a modem-specific response that contains a "type" field and "data" field.
-/// Verifies the type matches the expected type before returning the data.
-async fn read_modem_response<T>(expected: &str, response: reqwest::Response) -> HttpResult<T>
-where
-    T: serde::de::DeserializeOwned,
-{
-    // Verify expected response type.
-    let json_response: serde_json::Value = read_http_response(response).await?;
-    let actual = json_response
-        .get("type")
-        .and_then(|v| v.as_str())
-        .ok_or(HttpError::MissingTypeField)?;
-
-    if actual != expected {
-        return Err(HttpError::ResponseTypeMismatch {
-            expected: expected.to_string(),
-            actual: actual.to_string(),
-        });
-    }
-
-    // Extract and return the data field.
-    let data = json_response
-        .get("data")
-        .ok_or(HttpError::MissingDataField)?;
-
-    serde_json::from_value(data.clone()).map_err(HttpError::JsonError)
 }
 
 /// Create a reqwest client with optional TLS configuration.
@@ -304,65 +275,58 @@ impl HttpClient {
         }
 
         let response = request.json(message).send().await?;
-
         read_http_response(response).await
     }
 
     /// Get the carrier network status.
     pub async fn get_network_status(&self) -> HttpResult<HttpModemNetworkStatusResponse> {
-        self.modem_request("/sms/modem-status", "NetworkStatus")
-            .await
+        self.modem_request("/sms/modem-status").await
     }
 
     /// Get the modem signal strength for the connected tower.
     pub async fn get_signal_strength(&self) -> HttpResult<HttpModemSignalStrengthResponse> {
-        self.modem_request("/sms/signal-strength", "SignalStrength")
-            .await
+        self.modem_request("/sms/signal-strength").await
     }
 
     /// Get the underlying network operator, this is often the same across
     /// multiple service providers for a given region. Eg: vodafone.
     pub async fn get_network_operator(&self) -> HttpResult<HttpModemNetworkOperatorResponse> {
-        self.modem_request("/sms/network-operator", "NetworkOperator")
-            .await
+        self.modem_request("/sms/network-operator").await
     }
 
     /// Get the SIM service provider, this is the brand that manages the contract.
     /// This matters less than the network operator, as they're just resellers. Eg: ASDA Mobile.
     pub async fn get_service_provider(&self) -> HttpResult<String> {
-        self.modem_request("/sms/service-provider", "ServiceProvider")
-            .await
+        self.modem_request("/sms/service-provider").await
     }
 
     /// Get the Modem Hat's battery level, which is used for GNSS warm starts.
     pub async fn get_battery_level(&self) -> HttpResult<HttpModemBatteryLevelResponse> {
-        self.modem_request("/sms/battery-level", "BatteryLevel")
-            .await
+        self.modem_request("/sms/battery-level").await
     }
 
     /// Get the GNSS module's fix status, indicating location data capabilities.
     /// If GNSS is disabled/unavailable this will likely be `FixStatus::Unknown`.
     pub async fn get_gnss_status(&self) -> HttpResult<FixStatus> {
-        self.modem_request("/gnss/status", "GNSSStatus").await
+        self.modem_request("/gnss/status").await
     }
 
     /// Get the GNSS module's current location (`PositionReport`).
     /// If GNSS is disabled/unavailable some values be None, others may be Some(0.00).
     /// This depends on the SIM chip being used.
     pub async fn get_gnss_location(&self) -> HttpResult<PositionReport> {
-        self.modem_request("/gnss/location", "GNSSLocation").await
+        self.modem_request("/gnss/location").await
     }
 
     /// Get device info summary result. This is a more efficient way to request all device info.
-    pub async fn get_device_info(&self) -> HttpResult<HttpSmsDeviceInfoData> {
+    pub async fn get_device_info(&self) -> HttpResult<HttpSmsDeviceInfoResponse> {
         let url = self.base_url.join("/sms/device-info")?;
         let response = self
             .setup_request(true, self.client.get(url))
             .send()
             .await?;
 
-        let response = read_http_response::<HttpSmsDeviceInfoResponse>(response).await?;
-        Ok(HttpSmsDeviceInfoData::from(response))
+        read_http_response(response).await
     }
 
     /// Get the configured sender SMS number. This should be used primarily for client identification.
@@ -389,8 +353,8 @@ impl HttpClient {
         read_http_response(response).await
     }
 
-    /// Send an SMS modem request, the response contains a named type which is verified.
-    async fn modem_request<T>(&self, route: &str, expected: &str) -> HttpResult<T>
+    /// Send an SMS modem request, returning inner response value.
+    async fn modem_request<T>(&self, route: &str) -> HttpResult<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -400,7 +364,7 @@ impl HttpClient {
             .send()
             .await?;
 
-        read_modem_response::<T>(expected, response).await
+        read_http_response::<T>(response).await
     }
 
     /// Allow for a different timeout to be used for modem requests,

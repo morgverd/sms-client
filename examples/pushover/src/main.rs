@@ -7,6 +7,7 @@ use sms_client::config::{ClientConfig, WebSocketConfig};
 use sms_client::error::ClientError;
 use sms_client::types::events::Event;
 use sms_client::types::sms::SmsMessage;
+use sms_client::ws::events::WebsocketEvent;
 
 #[derive(Clone)]
 struct PushoverConfig {
@@ -86,7 +87,7 @@ async fn main() -> Result<(), ClientError> {
     client
         .on_message_simple(move |message| {
             match message {
-                Event::IncomingMessage(sms) => {
+                WebsocketEvent::Server(Event::IncomingMessage(sms)) => {
                     // Create a tokio task to send the pushover notifications.
                     let pushover_config = config.pushover.clone();
                     tokio::spawn(async move {

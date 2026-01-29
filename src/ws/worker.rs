@@ -1,6 +1,7 @@
 //! WebSocket worker loop and message handling.
 
 use crate::ws::error::*;
+use crate::ws::events::{WebsocketEvent, WebsocketReconnectionKind};
 use futures_util::{SinkExt, StreamExt};
 
 /// Control messages for the worker loop
@@ -60,7 +61,9 @@ impl WorkerLoop {
                 Ok(should_reconnect) => {
                     // Emit disconnection event
                     let will_reconnect = should_reconnect && self.config.auto_reconnect;
-                    self.emit_connection_update(false, will_reconnect);
+                    self.emit_connection_update(WebsocketReconnectionKind::Disconnected(
+                        will_reconnect,
+                    ));
 
                     if !will_reconnect {
                         break;
@@ -74,7 +77,9 @@ impl WorkerLoop {
 
                     // Emit disconnection event
                     let will_reconnect = self.config.auto_reconnect;
-                    self.emit_connection_update(false, will_reconnect);
+                    self.emit_connection_update(WebsocketReconnectionKind::Disconnected(
+                        will_reconnect,
+                    ));
 
                     log::error!("WebSocket error: {:#?}", e);
                     if !will_reconnect {
@@ -118,7 +123,7 @@ impl WorkerLoop {
         let ws_stream = connection_params.connect().await?;
 
         *self.is_connected.write().await = true;
-        self.emit_connection_update(true, false);
+        self.emit_connection_update(WebsocketReconnectionKind::Connected);
 
         // Set up ping interval
         let mut ping_interval = tokio::time::interval(self.config.ping_interval);
@@ -202,9 +207,9 @@ impl WorkerLoop {
     /// Process text message
     fn process_text_message(&self, text: String) {
         match serde_json::from_str::<sms_types::events::Event>(&text) {
-            Ok(ws_msg) => {
+            Ok(event) => {
                 if let Some(cb) = &self.callback {
-                    cb(ws_msg);
+                    cb(WebsocketEvent::Server(event));
                 }
             }
             Err(e) => {
@@ -260,12 +265,9 @@ impl WorkerLoop {
     }
 
     /// Emit connection status update
-    fn emit_connection_update(&self, connected: bool, reconnect: bool) {
+    fn emit_connection_update(&self, kind: WebsocketReconnectionKind) {
         if let Some(cb) = &self.callback {
-            cb(sms_types::events::Event::WebsocketConnectionUpdate {
-                connected,
-                reconnect,
-            });
+            cb(WebsocketEvent::Reconnection(kind));
         }
     }
 }

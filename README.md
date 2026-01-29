@@ -15,19 +15,19 @@ Here's some other usage examples from inside a project `Cargo.toml`.
 [dependencies]
 
 # Includes ONLY the HttpClient.
-sms-client = "2.2.0"
+sms-client = "3.0.0"
 
 # Includes BOTH the HttpClient and WebSocketClient.
-sms-client = { version = "2.2.0", features = ["websocket"] }
+sms-client = { version = "3.0.0", features = ["websocket"] }
 
 # Includes ONLY the WebSocketClient.
-sms-client = { version = "2.2.0", default-features = false, features = ["websocket"] }
+sms-client = { version = "3.0.0", default-features = false, features = ["websocket"] }
 
 # Includes BOTH, with Rust-TLS.
-sms-client = { version = "2.2.0", features = ["http-tls-rustls", "websocket-tls-rustls"] }
+sms-client = { version = "3.0.0", features = ["http-tls-rustls", "websocket-tls-rustls"] }
 
 # Includes BOTH, with native TLS.
-sms-client = { version = "2.2.0", features = ["http-tls-native", "websocket-tls-native"] }
+sms-client = { version = "3.0.0", features = ["http-tls-native", "websocket-tls-native"] }
 ```
 
 ## Compilation Features
@@ -77,6 +77,7 @@ Listen for incoming SMS messages, and then reply with the same message content.
 use sms_client::Client;
 use sms_client::config::{ClientConfig, TLSConfig};
 use sms_client::error::ClientResult;
+use sms_client::ws::events::WebsocketEvent;
 use sms_client::types::events::Event;
 use sms_client::types::sms::{SmsMessage, SmsOutgoingMessage};
 
@@ -103,7 +104,7 @@ async fn main() -> ClientResult<()> {
         .on_message(move |message, client| {
             // Match WebSocket event to check if it's an IncomingMessage.
             match message {
-                Event::IncomingMessage(sms) => send_reply(client, sms),
+                WebsocketEvent::Server(Event::IncomingMessage(sms)) => send_reply(client, sms),
                 _ => {}
             }
         })

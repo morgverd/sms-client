@@ -1,6 +1,7 @@
 //! Main WebSocket client implementation.
 
 use crate::ws::error::*;
+use crate::ws::events::WebsocketEvent;
 use crate::ws::worker::{ControlMessage, WorkerLoop};
 
 /// WebSocket client for real-time message reception.
@@ -31,7 +32,7 @@ impl WebSocketClient {
     /// Set the message callback handler.
     pub fn on_message<F>(&mut self, callback: F)
     where
-        F: Fn(sms_types::events::Event) + Send + Sync + 'static,
+        F: Fn(WebsocketEvent) + Send + Sync + 'static,
     {
         self.callback = Some(std::sync::Arc::new(callback));
     }
