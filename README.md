@@ -15,19 +15,19 @@ Here's some other usage examples from inside a project `Cargo.toml`.
 [dependencies]
 
 # Includes ONLY the HttpClient.
-sms-client = "3.0.0"
+sms-client = "3.1.0"
 
 # Includes BOTH the HttpClient and WebSocketClient.
-sms-client = { version = "3.0.0", features = ["websocket"] }
+sms-client = { version = "3.1.0", features = ["websocket"] }
 
 # Includes ONLY the WebSocketClient.
-sms-client = { version = "3.0.0", default-features = false, features = ["websocket"] }
+sms-client = { version = "3.1.0", default-features = false, features = ["websocket"] }
 
 # Includes BOTH, with Rust-TLS.
-sms-client = { version = "3.0.0", features = ["http-tls-rustls", "websocket-tls-rustls"] }
+sms-client = { version = "3.1.0", features = ["http-tls-rustls", "websocket-tls-rustls"] }
 
 # Includes BOTH, with native TLS.
-sms-client = { version = "3.0.0", features = ["http-tls-native", "websocket-tls-native"] }
+sms-client = { version = "3.1.0", features = ["http-tls-native", "websocket-tls-native"] }
 ```
 
 ## Compilation Features

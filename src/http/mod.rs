@@ -209,7 +209,7 @@ impl HttpClient {
             pagination.add_to_body(&mut body);
         }
 
-        let url = self.base_url.join("/db/sms")?;
+        let url = self.base_url.join("/db/messages")?;
         let response = self
             .setup_request(false, self.client.post(url))
             .json(&body)
@@ -347,6 +347,22 @@ impl HttpClient {
         let url = self.base_url.join("/sys/version")?;
         let response = self
             .setup_request(false, self.client.get(url))
+            .send()
+            .await?;
+
+        read_http_response(response).await
+    }
+
+    /// Set the server log level during runtime. This is useful for live debugging.
+    pub async fn set_log_level(&self, level: impl Into<String>) -> HttpResult<bool> {
+        let body = serde_json::json!({
+            "level": level.into()
+        });
+
+        let url = self.base_url.join("/sys/set-log-level")?;
+        let response = self
+            .setup_request(false, self.client.post(url))
+            .json(&body)
             .send()
             .await?;
 
